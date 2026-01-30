@@ -1,0 +1,3427 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nayaruvi | National Air Quality Visualizer & Forecast - Government of India</title>
+    <link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#003366">
+
+
+
+
+    <!-- External Resources -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
+    <style>
+        :root {
+            --gov-blue: #003366;
+            --gov-blue-dark: #002244;
+            --gov-orange: #f58220;
+            --gov-green: #2e7d32;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --bg-light: #f4f7f9;
+            --white: #ffffff;
+            --aqi-good: #00e400;
+            --aqi-satisfactory: #92d050;
+            --aqi-moderate: #ffff00;
+            --aqi-poor: #ff7e00;
+            --aqi-very-poor: #ff0000;
+            --aqi-severe: #7e0023;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* --- Global Components --- */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--gov-blue);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--gov-blue-dark);
+        }
+
+        .btn-orange {
+            background: var(--gov-orange);
+            color: var(--white);
+        }
+
+        .btn-outline {
+            border: 2px solid var(--gov-blue);
+            color: var(--gov-blue);
+            background: transparent;
+        }
+
+        .btn-outline:hover {
+            background: var(--gov-blue);
+            color: var(--white);
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-top: 4px solid transparent;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            color: var(--gov-blue);
+            margin-bottom: 25px;
+            position: relative;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 60px;
+            height: 4px;
+            background: var(--gov-orange);
+        }
+
+        /* --- Header & Navbar --- */
+        header {
+            background: var(--white);
+            border-bottom: 3px solid var(--gov-orange);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .top-bar {
+            background: #eee;
+            padding: 5px 0;
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-isro {
+            height: 50px;
+        }
+
+        .logo-text {
+            border-left: 2px solid #ddd;
+            padding-left: 15px;
+        }
+
+        .logo-text h1 {
+            font-size: 1.4rem;
+            color: var(--gov-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .logo-text span {
+            font-size: 0.8rem;
+            color: var(--gov-orange);
+            font-weight: bold;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--gov-blue);
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--gov-orange);
+        }
+
+        /* --- Hero Section --- */
+        .hero {
+            background: linear-gradient(rgba(0, 51, 102, 0.85), rgba(0, 51, 102, 0.85)), url('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=2000');
+            background-size: cover;
+            background-position: center;
+            color: var(--white);
+            padding: 60px 0;
+            text-align: center;
+        }
+
+        .hero h2 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+
+        .search-container {
+            max-width: 650px;
+            margin: 0 auto;
+            display: flex;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .search-container input {
+            flex: 1;
+            padding: 15px;
+            border-radius: 4px;
+            border: none;
+            font-size: 1rem;
+        }
+
+        /* --- Main Dashboard --- */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            margin-top: -40px;
+        }
+
+        .aqi-main-card {
+            text-align: center;
+            background: var(--white);
+            border-top: 8px solid var(--aqi-moderate);
+        }
+
+        .aqi-value {
+            font-size: 5rem;
+            font-weight: 800;
+            line-height: 1;
+            margin: 10px 0;
+            color: var(--text-dark);
+        }
+
+        .aqi-status {
+            display: inline-block;
+            padding: 5px 25px;
+            border-radius: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+
+        .aqi-scale-bar {
+            height: 12px;
+            width: 100%;
+            background: linear-gradient(to right,
+                    var(--aqi-good) 0% 16%,
+                    var(--aqi-satisfactory) 16% 33%,
+                    var(--aqi-moderate) 33% 50%,
+                    var(--aqi-poor) 50% 66%,
+                    var(--aqi-very-poor) 66% 83%,
+                    var(--aqi-severe) 83% 100%);
+            border-radius: 6px;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .scale-indicator {
+            position: absolute;
+            top: -5px;
+            left: 0%;
+            width: 4px;
+            height: 22px;
+            background: var(--text-dark);
+            border-radius: 2px;
+            transition: left 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 15px;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-bottom: 3px solid #ddd;
+            transition: var(--transition);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            background: var(--white);
+            box-shadow: var(--shadow);
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-light);
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--gov-blue);
+            margin: 5px 0;
+        }
+
+        .metric-unit {
+            font-size: 0.7rem;
+            color: var(--text-light);
+        }
+
+
+
+        /* AQI Colors */
+        .aqi-good {
+            background: #2ecc71;
+            color: #ffffff;
+        }
+
+        .aqi-moderate {
+            background: #f1c40f;
+            color: #000000;
+        }
+
+        .aqi-sensitive {
+            background: #e67e22;
+            color: #ffffff;
+        }
+
+        .aqi-unhealthy {
+            background: #e74c3c;
+            color: #ffffff;
+        }
+
+        .aqi-very-unhealthy {
+            background: #8e44ad;
+            color: #ffffff;
+        }
+
+        .aqi-hazardous {
+            background: #7f0000;
+            color: #ffffff;
+        }
+
+        .aqi-legend-item strong {
+            display: block;
+            font-size: 1rem;
+            margin-bottom: 6px;
+        }
+
+
+        /* --- Map Section --- */
+        .map-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .map-wrapper {
+            height: 550px;
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            z-index: 10;
+        }
+
+        /* --- Forecast --- */
+        .forecast-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+
+        /* --- Alert/Registration --- */
+        .alert-cta {
+            background: var(--gov-blue);
+            color: var(--white);
+            padding: 40px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 40px;
+        }
+
+        .alert-cta h3 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .alert-cta p {
+            opacity: 0.8;
+        }
+
+        /* --- Education --- */
+        .edu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .aqi-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            background: #f8f9fa;
+            margin-bottom: 10px;
+        }
+
+        .legend-color {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+       .ml-risk-card{
+  background: linear-gradient(180deg, rgba(2,82,163,0.06), rgba(2,82,163,0.02));
+  border: 1px solid rgba(2,82,163,0.12);
+  border-radius: 18px;
+  padding: 18px;
+  margin-top: 18px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+}
+
+.ml-risk-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ml-risk-title{
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--gov-blue);
+  letter-spacing: 0.2px;
+}
+
+.ml-risk-sub{
+  margin-top: 4px;
+  font-size: 0.9rem;
+  color: var(--text-light);
+}
+
+.ml-risk-pill{
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(0,150,136,0.10);
+  border: 1px solid rgba(0,150,136,0.25);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: rgba(0,0,0,0.72);
+}
+
+.ml-risk-pill .dot{
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(0,150,136,0.9);
+  box-shadow: 0 0 0 4px rgba(0,150,136,0.16);
+}
+
+.ml-risk-grid{
+  margin-top: 14px;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 780px){
+  .ml-risk-grid{ grid-template-columns: 1fr; }
+}
+
+.ml-box{
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(0,0,0,0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.ml-box::before{
+  content:"";
+  position:absolute;
+  inset: 0;
+  opacity: 0.10;
+}
+
+.ml-box.best{
+  border-left: 6px solid rgba(0,150,136,0.9);
+}
+.ml-box.best::before{
+  background: radial-gradient(circle at 20% 20%, rgba(0,150,136,0.35), transparent 55%);
+}
+
+.ml-box.worst{
+  border-left: 6px solid rgba(211,47,47,0.95);
+}
+.ml-box.worst::before{
+  background: radial-gradient(circle at 20% 20%, rgba(211,47,47,0.35), transparent 55%);
+}
+
+.ml-box-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap: 10px;
+}
+
+.ml-box-label{
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: rgba(0,0,0,0.78);
+}
+
+.ml-badge{
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 0.4px;
+}
+
+.ml-badge.good{
+  background: rgba(0,150,136,0.12);
+  border: 1px solid rgba(0,150,136,0.22);
+}
+.ml-badge.bad{
+  background: rgba(211,47,47,0.12);
+  border: 1px solid rgba(211,47,47,0.22);
+}
+
+.ml-box-value{
+  margin-top: 10px;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: rgba(0,0,0,0.82);
+}
+
+.ml-box-hint{
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.ml-timeline-wrap{
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(0,0,0,0.12);
+}
+
+.ml-timeline-top{
+  display:flex;
+  justify-content:space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.ml-timeline-title{
+  font-weight: 900;
+  color: rgba(0,0,0,0.78);
+}
+
+.ml-timeline-note{
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.ml-risk-timeline{
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 8px;
+}
+
+.ml-hour{
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.ml-hour:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 10px 18px rgba(0,0,0,0.10);
+}
+
+.ml-hour span{
+  position:absolute;
+  left: 10px;
+  bottom: 8px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: rgba(0,0,0,0.65);
+  user-select: none;
+}
+
+.ml-hour.best{
+  outline: 3px solid rgba(0,150,136,0.30);
+}
+
+.ml-hour.worst{
+  outline: 3px solid rgba(211,47,47,0.30);
+}
+
+.ml-legend{
+  margin-top: 10px;
+  display:flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.ml-legend .lg{
+  display:flex;
+  align-items:center;
+  gap: 6px;
+}
+
+.ml-legend .c{
+  width: 14px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.10);
+}
+.ml-legend .low{ background:#c8e6c9; }
+.ml-legend .mid{ background:#fff9c4; }
+.ml-legend .hi{ background:#ffe0b2; }
+.ml-legend .vhi{ background:#ffcdd2; }
+
+
+.spike-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:10px;
+}
+
+.spike-label{
+  font-weight:800;
+  font-size:0.9rem;
+  color: rgba(0,0,0,0.75);
+  min-width: 90px;
+}
+
+.spike-bar{
+  flex:1;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.08);
+  overflow:hidden;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.spike-fill{
+  height:100%;
+  width:0%;
+  border-radius:999px;
+  transition: width 0.6s ease;
+}
+
+.spike-pct{
+  font-weight:900;
+  font-size:0.9rem;
+  min-width: 60px;
+  text-align:right;
+}
+
+.spike-mini{
+  margin-top:6px;
+  font-size:0.82rem;
+  color: var(--text-light);
+}
+
+#spike-note{ display:none !important; }
+
+
+.spike-row-grid{
+  display: grid;
+  grid-template-columns: 90px 1fr 60px 320px; /* label | bar | % | advice */
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.spike-advice{
+  font-size: 0.82rem;
+  color: var(--text-light);
+  line-height: 1.35;
+  white-space: normal;
+}
+
+@media (max-width: 900px){
+  .spike-row-grid{
+    grid-template-columns: 90px 1fr 60px;
+  }
+  .spike-advice{
+    grid-column: 1 / -1;   /* advice goes to next line only on mobile */
+    margin-top: 6px;
+  }
+}
+
+.spike-wrap{
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 900px){
+  .spike-wrap{
+    grid-template-columns: 1fr;
+  }
+}
+
+.spike-title{
+  font-weight: 900;
+  font-size: 1.05rem;
+  color: rgba(0,0,0,0.78);
+  margin-bottom: 10px;
+}
+
+.t200{ color:#d32f2f; }
+
+.spike-row{
+  display: grid;
+  grid-template-columns: 90px 1fr 60px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(0,0,0,0.10);
+}
+
+.spike-row:last-child{
+  border-bottom: none;
+}
+
+.spike-label{
+  font-weight: 900;
+  color: rgba(0,0,0,0.78);
+}
+
+.spike-pct{
+  font-weight: 900;
+  text-align: right;
+  color: rgba(0,0,0,0.80);
+}
+
+.spike-bar{
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.08);
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.spike-fill{
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+
+.spike-right{
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(2,82,163,0.04);
+  border: 1px solid rgba(2,82,163,0.10);
+}
+
+.spike-prec-head{
+  font-weight: 1000;
+  font-size: 1.05rem;
+  color: var(--gov-blue);
+}
+
+.spike-prec-sub{
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--text-light);
+  margin-bottom: 12px;
+}
+
+.spike-prec-card{
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.spike-prec-tag{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 900;
+  font-size: 0.82rem;
+  margin-bottom: 6px;
+}
+
+.spike-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.spike-prec-text{
+  font-size: 0.86rem;
+  color: rgba(0,0,0,0.72);
+  line-height: 1.4;
+}
+
+.spike-wrap{
+  align-items: start;
+}
+
+.spike-col-head{
+  min-height: 60px;   /* ✅ SAME height for both column headers */
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+}
+
+.spike-left .spike-title{
+  margin: 0;
+}
+
+.aqi-legend-grid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.aqi-legend-item{
+  display:flex;
+  gap: 10px;
+  align-items:flex-start;
+  padding: 12px;
+  border-radius: 14px;
+  background: #f8fbff;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.legend-color{
+  width: 14px;
+  height: 14px;
+  border-radius: 6px;
+  margin-top: 4px;
+  flex: 0 0 auto;
+}
+
+
+.aqi-legend-grid{
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 800px){
+  .aqi-legend-grid{
+    grid-template-columns: 1fr;
+  }
+}
+
+.aqi-legend-item{
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #f8fbff;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.aqi-legend-item:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.legend-color{
+  width: 16px;
+  height: 16px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+/* Color Themes */
+.aqi-legend-item.good .legend-color{ background:#4caf50; }
+.aqi-legend-item.satisfactory .legend-color{ background:#cddc39; }
+.aqi-legend-item.moderate .legend-color{ background:#ff9800; }
+.aqi-legend-item.poor .legend-color{ background:#f44336; }
+.aqi-legend-item.very-poor .legend-color{ background:#9c27b0; }
+.aqi-legend-item.severe .legend-color{ background:#6a1b9a; }
+
+.mode-card{
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+}
+
+.mode-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+
+.mode-title{
+  font-weight: 1000;
+  font-size: 1.02rem;
+  color: rgba(0,0,0,0.80);
+}
+
+.mode-sub{
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.mode-badge{
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 0.78rem;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(2,82,163,0.06);
+  color: var(--gov-blue);
+}
+
+.mode-tabs{
+  margin-top: 12px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.mode-btn{
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: #f7f9fc;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform .12s ease, background .12s ease;
+}
+
+.mode-btn:hover{ transform: translateY(-1px); }
+
+.mode-btn.active{
+  background: rgba(2,82,163,0.12);
+  border-color: rgba(2,82,163,0.22);
+  color: var(--gov-blue);
+}
+
+.mode-tip{
+  margin-top: 10px;
+  font-size: 0.88rem;
+  color: rgba(0,0,0,0.70);
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(76,175,80,0.08);
+  border: 1px solid rgba(76,175,80,0.18);
+}
+
+/* Optional: if your health card uses data-tone, it will auto color */
+#health-recommendation-box[data-tone="ok"]{ border-left: 6px solid #2e7d32; }
+#health-recommendation-box[data-tone="mid"]{ border-left: 6px solid #f9a825; }
+#health-recommendation-box[data-tone="high"]{ border-left: 6px solid #d32f2f; }
+#health-recommendation-box[data-tone="vhigh"]{ border-left: 6px solid #6a1b9a; }
+#health-recommendation-box[data-tone="severe"]{ border-left: 6px solid #4a148c; }
+
+
+.health-box{
+  margin-top: 14px;
+  text-align: left;
+  padding: 16px;
+  background: #fffde7;
+  border-radius: 12px;
+  border-left: 6px solid var(--gov-orange);
+}
+
+.health-title{
+  font-weight: 900;
+  color: #f58220;
+  margin-bottom: 6px;
+}
+
+.health-text{
+  font-size: 0.95rem;
+  color: rgba(0,0,0,0.75);
+  line-height: 1.4;
+}
+
+/* Health tone colors (for Mode-aware advice) */
+#health-recommendation-box[data-tone="ok"]{ background:#e8f5e9; border-left-color: var(--gov-green); }
+#health-recommendation-box[data-tone="mid"]{ background:#fff8e1; border-left-color:#f9a825; }
+#health-recommendation-box[data-tone="high"]{ background:#ffebee; border-left-color:#d32f2f; }
+#health-recommendation-box[data-tone="vhigh"]{ background:#f3e5f5; border-left-color:#6a1b9a; }
+#health-recommendation-box[data-tone="severe"]{ background:#ede7f6; border-left-color:#4a148c; }
+
+
+.mode-toast{
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 9999;
+  min-width: 240px;
+  max-width: 340px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid rgba(0,0,0,0.10);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+  font-weight: 900;
+  color: rgba(0,0,0,0.78);
+  transform: translateY(-10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.mode-toast.show{
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mode-toast small{
+  display:block;
+  margin-top: 4px;
+  font-weight: 700;
+  color: rgba(0,0,0,0.55);
+}
+
+.mode-toast.normal{ border-left: 6px solid rgba(2,82,163,0.75); }
+.mode-toast.child{  border-left: 6px solid rgba(255,152,0,0.75); }
+.mode-toast.asthma{ border-left: 6px solid rgba(211,47,47,0.75); }
+
+
+
+
+
+
+
+
+        /* Make AQI Education Section Fully Black */
+        #education-section,
+        #education-section h2,
+        #education-section h3,
+        #education-section p,
+        #education-section span,
+        #education-section strong,
+        #education-section li {
+            color: #000000 !important;
+            opacity: 1 !important;
+        }
+
+        /* AQI Legend Items Text */
+        .aqi-legend-item {
+            color: #000000 !important;
+        }
+
+        /* Legend description */
+        .aqi-legend-item div {
+            color: #000000 !important;
+        }
+
+        /* Titles */
+        #edu-section-title,
+        #edu-impact-title {
+            color: #000000 !important;
+        }
+
+
+        /* --- Overlay/Modals --- */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .reg-modal {
+            background: var(--white);
+            width: 95%;
+            max-width: 600px;
+            border-radius: 8px;
+            padding: 30px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        footer {
+            background: var(--gov-blue-dark);
+            color: var(--white);
+            padding: 60px 0 30px;
+            margin-top: 80px;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .alert-cta {
+                flex-direction: column;
+                text-align: center;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="container" style="display: flex; justify-content: space-between;">
+            <div id="gov-header-text">Government of India | Ministry of Environment, Forest and Climate Change</div>
+            <div>
+                <i class="fa fa-globe"></i>
+                <select id="lang-select"
+                    style="background: transparent; border: none; font-size: 0.8rem; cursor: pointer;">
+                    <option value="en">English (Official)</option>
+                    <option value="hi">हिन्दी (Hindi)</option>
+                    <option value="ta">தமிழ் (Tamil)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header>
+        <div class="container navbar">
+            <div class="logo-area">
+                <img src="logo.png" alt="ISRO Logo" class="logo-isro">
+                <div class="logo-text">
+                    <h1>Nayaruvi</h1>
+                    <span id="header-subtitle">National Air Quality Hub</span>
+                </div>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#" class="active" data-i18n="nav-home">Home</a></li>
+                <li><a href="#map-section" data-i18n="nav-map">Command Map</a></li>
+                <li><a href="#forecast-section" data-i18n="nav-forecast">Forecasts</a></li>
+                <li><a href="#education-section" data-i18n="nav-info">Health & Info</a></li>
+            </ul>
+            <div class="auth-btns">
+                <button class="btn btn-primary" onclick="toggleRegistration()" id="alert-signup-btn"><i
+                        class="fa fa-bell"></i> Alerts Sign-up</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h2 id="hero-title">Real-Time Environmental Intelligence</h2>
+            <p id="hero-desc">Access granular air quality data, predictive trends, and personalized health advisories
+                powered by CPCB and ISRO integration.</p>
+            <div class="search-container">
+                <input type="text" id="city-search" placeholder="Search by City or PIN Code (e.g. 110001, Chennai)...">
+                <button class="btn btn-orange" id="search-btn" onclick="updateLocation()">
+                    <i class="fa fa-search"></i> <span id="btn-monitor-text">Monitor</span>
+                </button>
+                <button class="btn btn-primary" onclick="getLocation()" title="Use My Location">
+                    <i class="fa fa-location-crosshairs"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+<!-- Dashboard -->
+<div class="container">
+  <div class="dashboard-grid">
+
+    <!-- AQI Primary Card -->
+    <div class="card aqi-main-card" id="main-aqi-card">
+      <h3 id="live-status-label"
+          style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">
+        Live Status
+      </h3>
+
+      <p id="current-location-label" style="font-weight: 700; font-size: 1.2rem;">
+        Rameswaram, Tamil Nadu
+      </p>
+
+      <p id="update-time" style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 15px;">
+        --
+      </p>
+
+      <div class="aqi-value" id="aqi-main-value">--</div>
+      <div class="aqi-status" id="aqi-status-text">--</div>
+
+      <div class="aqi-scale-bar">
+        <div class="scale-indicator" id="aqi-pointer"></div>
+      </div>
+
+      <!-- ✅ Health Recommendation (upgraded) -->
+      <div class="health-box" id="health-recommendation-box">
+        <p class="health-title">
+          <i class="fa fa-shield-virus"></i>
+          <span id="health-rec-label">Health Recommendation</span>
+        </p>
+        <p class="health-text" id="health-advice">Fetching specific data...</p>
+      </div>
+
+      <!-- Send Button -->
+      <div style="margin-top: 15px; text-align: center;">
+        <button class="btn btn-primary" id="send-aqi-btn" onclick="sendAQIEmail()" type="button">
+          <i class="fa fa-envelope"></i>
+          <span id="send-aqi-text">Send Current AQI to Email</span>
+        </button>
+      </div>
+
+      <!-- ✅ Personal Safety Mode -->
+      <div class="mode-card" style="margin-top:16px;">
+        <div class="mode-head">
+          <div>
+            <div class="mode-title">Personal Safety Mode</div>
+            <div class="mode-sub">Adaptive health guidance based on sensitivity</div>
+          </div>
+          <span class="mode-badge" id="mode-badge">NORMAL</span>
+        </div>
+
+        <div class="mode-tabs" id="mode-tabs">
+          <button class="mode-btn active" data-mode="normal" type="button">Normal</button>
+          <button class="mode-btn" data-mode="child" type="button">Child Mode</button>
+          <button class="mode-btn" data-mode="asthma" type="button">Asthma Mode</button>
+        </div>
+
+        <div class="mode-tip" id="mode-tip">
+          Guidance adjusts automatically for the selected group.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Detailed Pollutants -->
+    <div class="card">
+      <h3 style="margin-bottom: 25px; font-size: 1.2rem; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+        <i class="fa fa-vial"></i>
+        <span id="pollutant-title">Major Pollutant Concentration (IAQI)</span>
+      </h3>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">PM 2.5</div>
+          <div class="metric-value" id="m-pm25">--</div>
+          <div class="metric-unit">µg/m³</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">PM 10</div>
+          <div class="metric-value" id="m-pm10">--</div>
+          <div class="metric-unit">µg/m³</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">NO₂</div>
+          <div class="metric-value" id="m-no2">--</div>
+          <div class="metric-unit">ppb</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">SO₂</div>
+          <div class="metric-value" id="m-so2">--</div>
+          <div class="metric-unit">ppb</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">O₃</div>
+          <div class="metric-value" id="m-o3">--</div>
+          <div class="metric-unit">ppb</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">CO</div>
+          <div class="metric-value" id="m-co">--</div>
+          <div class="metric-unit">ppm</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 30px; padding: 15px; background: #f0f4f8; border-radius: 6px; font-size: 0.85rem;">
+        <strong>
+          <i class="fa fa-info-circle"></i>
+          <span id="station-info-label">Station Info:</span>
+        </strong>
+        <span id="station-info">Monitoring ground-level sensor data...</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+        <!-- Alert CTA -->
+        <div class="alert-cta" id="alert-section">
+            <div>
+                <h3 id="alert-cta-title">Personalized Safety Alerts</h3>
+                <p id="alert-cta-desc">Register to receive instant SMS, Email, or Push notifications when air quality in
+                    your PIN code crosses unsafe thresholds.</p>
+            </div>
+            <button class="btn btn-orange" style="padding: 15px 30px;" onclick="toggleRegistration()">
+                <i class="fa fa-paper-plane"></i> <span id="btn-get-alerts">Get Alerts Now</span>
+            </button>
+        </div>
+
+        <!-- Command Map -->
+        <section id="map-section">
+            <h2 class="section-title" id="map-section-title">National Air Quality Command Map</h2>
+            <div class="card">
+                <div class="map-controls">
+                    <button class="btn btn-primary" onclick="setMapView('value')" id="map-btn-value">AQI Value
+                        Map</button>
+                    <button class="btn btn-outline" onclick="setMapView('heat')" id="map-btn-heat">Heat Map
+                        View</button>
+                    <button class="btn btn-outline" onclick="setMapView('sources')" id="map-btn-sources">Pollution
+                        Sources</button>
+                </div>
+                <div id="aqi-map" class="map-wrapper"></div>
+                <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 15px;">
+                    <i class="fa fa-satellite"></i> <span id="map-footer-text">Visualizing real-time data from 200+
+                        monitoring stations across India. Map integrated with World Air Quality Index Open Data
+                        Platform.</span>
+                </p>
+            </div>
+        </section>
+
+        <!-- Forecasts -->
+        <section id="forecast-section">
+          <!-- ML Risk Window Predictor (Next 24 Hours) -->
+<div class="ml-risk-card">
+  <div class="ml-risk-head">
+    <div>
+      <div class="ml-risk-title">Smart Outdoor Window Predictor</div>
+      <div class="ml-risk-sub">Next 24 hours • ML-driven risk scoring</div>
+    </div>
+
+    <div class="ml-risk-pill">
+      <span class="dot"></span>
+      Live Prediction
+    </div>
+  </div>
+
+  <div class="ml-risk-grid">
+    <div class="ml-box best">
+      <div class="ml-box-top">
+        <div class="ml-box-label">Best time to go outside</div>
+        <div class="ml-badge good">LOW RISK</div>
+      </div>
+      <div id="best-window" class="ml-box-value">--</div>
+      <div class="ml-box-hint">Recommended for walk / commute</div>
+    </div>
+
+    <div class="ml-box worst">
+      <div class="ml-box-top">
+        <div class="ml-box-label">Avoid going outside</div>
+        <div class="ml-badge bad">HIGH RISK</div>
+      </div>
+      <div id="worst-window" class="ml-box-value">--</div>
+      <div class="ml-box-hint">Use mask • limit outdoor activity</div>
+    </div>
+  </div>
+
+  <!-- Peak Spike Predictor (AQI danger crossing probability) -->
+<div class="card" style="margin-top:18px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+    <h3 style="margin:0; color: var(--gov-blue);">Peak Spike Predictor</h3>
+    <span style="font-size:0.85rem; color: var(--text-light);">
+      Short-term risk forecast 
+    </span>
+  </div>
+
+ <div class="spike-wrap">
+  <!-- LEFT COLUMN -->
+  <div class="spike-left">
+    <div class="spike-col-head">
+      <div class="spike-title">Will AQI cross <span class="t200">200</span>?</div>
+    </div>
+    <div id="spike-200" class="spike-rows"></div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="spike-right">
+    <div class="spike-col-head">
+      <div class="spike-prec-head">Precautions</div>
+      <div class="spike-prec-sub">What you should do if risk rises</div>
+    </div>
+    <div id="spike-precautions" class="spike-prec-list"></div>
+  </div>
+</div>
+
+
+    
+  </div>
+
+  <div style="margin-top:10px; font-size:0.85rem; color: var(--text-light);" id="spike-note">
+    Prediction is estimated from your recent AQI trend and fluctuations.
+  </div>
+</div>
+
+
+ 
+            <h2 class="section-title" id="forecast-section-title">24-72 Hour Predictive Trends</h2>
+            <div class="card">
+                <div class="forecast-header">
+                    <div>
+                        <h3 id="forecast-chart-title">ML-Based Multi-Horizon AQI Forecast (XGBoost)</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-light);" id="forecast-chart-desc">Probabilistic
+                            modeling of AQI trends based on historical sensor data.</p>
+                    </div>
+                    <select id="forecast-range" style="padding: 8px; border-radius: 4px;" onchange="updateForecast()">
+                        <option value="24" id="opt-24h">Next 24 Hours</option>
+                        <option value="72" selected id="opt-72h">Next 72 Hours</option>
+                    </select>
+                </div>
+                <div class="chart-container">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+                <button onclick="resetChartZoom()" style="margin-top:10px;">
+                    Reset Zoom
+                </button>
+                <div
+                    style="margin-top: 20px; padding: 15px; border-radius: 8px; background: #e8f5e9; border-left: 5px solid var(--gov-green);">
+                    <p style="font-size: 0.9rem;"><strong><i class="fa fa-brain"></i> <span id="logic-label">Prediction
+                                Logic:</span></strong> <span id="logic-desc">Our algorithm factors in current pollutant
+                            levels, wind speed, and humidity to predict potential spikes in the coming days.</span></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Education -->
+        <section id="education-section">
+            <h2 class="section-title" id="edu-section-title">Understanding Air Quality Index (AQI)</h2>
+            <div class="edu-grid">
+                <div class="card" style="margin-bottom: 0;">
+                    <h3 style="margin-bottom: 20px;" id="edu-impact-title">
+                        AQI Categories & Health Impacts
+                    </h3>
+
+                    <div class="aqi-legend-grid">
+
+  <div class="aqi-legend-item good">
+    <div class="legend-color"></div>
+    <div>
+      <strong>Good (0–50)</strong><br>
+      Air quality is satisfactory and poses little or no health risk.
+    </div>
+  </div>
+
+  <div class="aqi-legend-item satisfactory">
+    <div class="legend-color"></div>
+    <div>
+      <strong>Satisfactory (51–100)</strong><br>
+      Minor breathing discomfort may occur for sensitive individuals.
+    </div>
+  </div>
+
+  <div class="aqi-legend-item moderate">
+    <div class="legend-color"></div>
+    <div>
+      <strong>Moderate (101–200)</strong><br>
+      Breathing discomfort may occur for people with lung or heart disease, children, and older adults.
+    </div>
+  </div>
+
+  <div class="aqi-legend-item poor">
+    <div class="legend-color"></div>
+    <div>
+      <strong>Poor (201–300)</strong><br>
+      Increased likelihood of respiratory symptoms and reduced tolerance for outdoor activity.
+    </div>
+  </div>
+
+  <div class="aqi-legend-item very-poor">
+    <div class="legend-color"></div>
+    <div>
+      <strong>Very Poor (301–400)</strong><br>
+      High risk of respiratory illness for the general population.
+    </div>
+  </div>
+
+  <div class="aqi-legend-item severe">
+    <div class="legend-color"></div>
+    <div>
+      <strong>Severe (401–500)</strong><br>
+      Serious health effects. Emergency conditions for everyone.
+    </div>
+  </div>
+
+</div>
+
+
+                    <!-- AQI Categories Legend (must exist for loadAQILegend) -->
+<div id="aqi-legend-container" class="aqi-legend-grid"></div>
+
+
+                    <div id="aqi-legend-container" class="aqi-legend">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom: 0;">
+                    <h3 style="margin-bottom: 20px;" id="edu-safety-title">Safety Precautions</h3>
+                    <ul style="list-style: none;" id="safety-list">
+                        <!-- Filled by JS based on language -->
+                    </ul>
+                    <img src="s.png" alt="Awareness"
+                        style="width: 100%; border-radius: 8px; margin-top: 10px; opacity: 0.8;">
+                </div>
+            </div>
+        </section>
+    </div>
+
+   <!-- Registration Modal -->
+<div id="registration-overlay" class="overlay">
+  <div class="reg-modal">
+
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:2px solid #eee; padding-bottom:15px;">
+      <div>
+        <h2 style="color: var(--gov-blue); font-size:1.4rem;" id="reg-title">
+          Citizen AQI Safety Profile
+        </h2>
+        <div style="font-size:0.85rem; color:var(--text-light);">
+          Personalized air quality alerts powered by predictive intelligence
+        </div>
+      </div>
+      <button onclick="toggleRegistration()" style="background:none; border:none; font-size:1.6rem; cursor:pointer;">&times;</button>
+    </div>
+
+    <form id="regForm" onsubmit="handleRegistration(event)">
+
+      <!-- Identity -->
+      <div class="form-group">
+        <label id="lbl-name">Full Name</label>
+        <input type="text" placeholder="e.g. Dr. Abdul Kalam" required id="inp-name">
+      </div>
+
+      <div style="margin-top:12px">
+        <input id="phoneInput" type="text" placeholder="Enter mobile (10 digits)" style="padding:10px;border:1px solid #ccc;border-radius:8px;width:240px">
+        <button id="savePhoneBtn" style="padding:10px 14px;border:none;border-radius:8px;cursor:pointer">Save</button>
+        <p id="phoneSavedMsg" style="margin:8px 0 0; font-size:13px;"></p>
+      </div>
+
+      <div class="form-group">
+        <label id="lbl-email">Email Address (for Alerts)</label>
+        <input type="email" placeholder="example@email.com" required id="inp-email">
+      </div>
+
+      <!-- Location -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+        <div class="form-group">
+          <label id="lbl-pincode">Preferred PIN Code</label>
+          <input type="text" placeholder="e.g. 600001" required id="inp-pincode">
+        </div>
+
+        <div class="form-group">
+          <label>City / Area</label>
+          <input type="text" placeholder="e.g. Chennai, Tambaram">
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-outline" style="width:100%; margin-bottom:20px;">
+        📍 Auto-detect my current area
+      </button>
+
+      <!-- Sensitivity Profile -->
+      <div class="form-group">
+        <label>Sensitivity Profile</label>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <label><input type="radio" name="profile" checked> Normal</label>
+          <label><input type="radio" name="profile"> Child</label>
+          <label><input type="radio" name="profile"> Asthma</label>
+          <label><input type="radio" name="profile"> Elderly</label>
+        </div>
+      </div>
+
+      <!-- Alert Settings -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+        <div class="form-group">
+          <label>Alert Threshold</label>
+          <select>
+            <option>AQI ≥ 100 (Sensitive)</option>
+            <option selected>AQI ≥ 200 (Unhealthy)</option>
+            <option>AQI ≥ 300 (Severe)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Area Type</label>
+          <select>
+            <option>Home</option>
+            <option>Workplace</option>
+            <option>School / College</option>
+            <option>Hospital</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Alert Channels -->
+      <div class="form-group">
+        <label>Alert Channels</label>
+        <div style="display:flex; gap:15px; flex-wrap:wrap;">
+          <label><input type="checkbox" checked> Email</label>
+          <label><input type="checkbox"> SMS</label>
+          <label><input type="checkbox"> WhatsApp</label>
+        </div>
+      </div>
+
+      <!-- Alert Timing -->
+      <div class="form-group">
+        <label>Preferred Alert Time</label>
+        <select>
+          <option>24×7 (Instant alerts)</option>
+          <option>Daytime only (6AM – 10PM)</option>
+          <option>Night only (10PM – 6AM)</option>
+        </select>
+      </div>
+
+      <!-- Consent -->
+      <div style="margin:20px 0;">
+        <label style="display:flex; gap:10px; font-size:0.85rem;">
+          <input type="checkbox" required>
+          I consent to receive air quality alerts and allow this system to use my location data for safety notifications.
+        </label>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" class="btn btn-primary" style="width:100%; padding:16px; font-size:1rem;">
+        🚨 Activate Smart AQI Alerts
+      </button>
+
+      <!-- Footer Note -->
+      <div style="margin-top:15px; font-size:0.8rem; color:var(--text-light); text-align:center;">
+        Your data is securely stored and used only for environmental safety alerts.
+      </div>
+
+    </form>
+  </div>
+</div>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div>
+                    <img src="n_logo.png    " alt="Nayaruvi Logo" style="
+            height: 50px;
+            margin-bottom: 20px;
+            background: #ffffff;
+            padding: 6px 10px;
+            border-radius: 6px;
+            object-fit: contain;
+         ">
+                    <p style="font-size: 0.85rem; color: #ccc;" id="footer-desc">
+                        Nayaruvi is a national platform for clean air awareness and monitoring, supporting the health of
+                        1.4 billion citizens.
+                    </p>
+                </div>
+
+                <div>
+                    <h4 style="margin-bottom: 20px; color: var(--gov-orange);" id="footer-links-title">Links</h4>
+                    <ul style="list-style: none; font-size: 0.9rem;">
+                        <li style="margin-bottom: 10px;"><a href="#" style="color: #ccc; text-decoration: none;">CPCB
+                                Sameer</a></li>
+                        <li style="margin-bottom: 10px;"><a href="#" style="color: #ccc; text-decoration: none;">ISRO
+                                Bhuvan</a></li>
+                        <li style="margin-bottom: 10px;"><a href="#" style="color: #ccc; text-decoration: none;">Digital
+                                India</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="margin-bottom: 20px; color: var(--gov-orange);" id="footer-support-title">Support</h4>
+                    <ul style="list-style: none; font-size: 0.9rem;">
+                        <li style="margin-bottom: 10px;"><a href="#" style="color: #ccc; text-decoration: none;"
+                                id="link-privacy">Privacy Policy</a></li>
+                        <li style="margin-bottom: 10px;"><a href="#" style="color: #ccc; text-decoration: none;"
+                                id="link-report">Report Error</a></li>
+                        <li style="margin-bottom: 10px;"><a href="#" style="color: #ccc; text-decoration: none;"
+                                id="link-api">API Details</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div style="border-top: 1px solid #444; padding-top: 20px; text-align: center; font-size: 0.8rem; color: #888;"
+                id="footer-copy">
+                &copy; 2026 Team Nayaruvi | Panimalar Engineering College | BUGSLAYERS
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- API & State ---
+        const WAQI_TOKEN = '7657b85f7527e90ee69a36309a798c757c7021b8';
+        const AQI_API_URL = "https://api.waqi.info/feed/chennai/?token=0821632a656cc32d1aa8b6749ef824c27934cdf061608f8f";
+        const WAQI_BASE = 'https://api.waqi.info';
+       let forecastChart = null;
+
+        let currentAQI = 0;
+
+        
+        let aqiHistoryValues = []; // store last 72 AQI readings
+        let lastUID = null;
+
+        let waqiDailyForecast = null; // <-- store WAQI forecast (API-only)
+
+        let currentLang = 'en';
+
+        let toastTimer = null;
+
+
+let map;
+let baseLayer;
+
+let valueTileLayer;      // AQI value squares (stations)
+let heatTileLayer;       // smooth heat overlay
+let pollutantTileLayer;  // PM2.5 pollutant overlay
+
+
+// Tile overlays
+let aqiTileLayer;        // overall AQI
+let pm25TileLayer;       // PM2.5 pollutant layer
+let activeOverlay = null;
+
+function showModeToast(mode){
+  const toast = document.getElementById("mode-toast");
+  if (!toast) return;
+
+  const title =
+    mode === "child"  ? "Child Mode Enabled ✅" :
+    mode === "asthma" ? "Asthma Mode Enabled ✅" :
+    "Normal Mode Enabled ✅";
+
+  const desc =
+    mode === "child"  ? "Stricter health guidance for children & sensitive users." :
+    mode === "asthma" ? "Very strict guidance. Avoid exposure earlier + mask readiness." :
+    "Standard guidance for general population thresholds.";
+
+  toast.className = `mode-toast show ${mode}`;
+  toast.innerHTML = `${title}<small>${desc}</small>`;
+
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2200);
+}
+
+
+        // --- Translations ---
+        const translations = {
+            'en': {
+                'gov-header': 'Government of India | Ministry of Environment, Forest and Climate Change',
+                'header-subtitle': 'National Air Quality Hub',
+                'nav-home': 'Home',
+                'nav-map': 'Command Map',
+                'nav-forecast': 'Forecasts',
+                'nav-info': 'Health & Info',
+                'alert-signup': 'Alerts Sign-up',
+                'hero-title': 'Real-Time Environmental Intelligence',
+                'hero-desc': 'Access granular air quality data, predictive trends, and personalized health advisories powered by CPCB and ISRO integration.',
+                'search-placeholder': 'Search by City or PIN Code (e.g. 110001, Chennai)...',
+                'btn-monitor': 'Monitor',
+                'live-status': 'Live Status',
+                'health-rec': 'Health Recommendation',
+                'pollutant-title': 'Major Pollutant Concentration (IAQI)',
+                'station-info-label': 'Station Info:',
+                'alert-cta-title': 'Personalized Safety Alerts',
+                'alert-cta-desc': 'Register to receive instant SMS, Email, or Push notifications when air quality in your PIN code crosses unsafe thresholds.',
+                'btn-get-alerts': 'Get Alerts Now',
+                'map-section-title': 'National Air Quality Command Map',
+                'map-btn-value': 'AQI Value Map',
+                'map-btn-heat': 'Heat Map View',
+                'map-btn-sources': 'Pollution Sources',
+                'map-footer': 'Visualizing real-time data from 200+ monitoring stations across India. Map integrated with World Air Quality Index Open Data Platform.',
+                'forecast-section-title': '24-72 Hour Predictive Trends',
+                'forecast-chart-title': 'ARIMA-Based Forecast Analysis',
+                'forecast-chart-desc': 'Probabilistic modeling of AQI trends based on historical sensor data.',
+                'opt-24h': 'Next 24 Hours',
+                'opt-72h': 'Next 72 Hours',
+                'logic-label': 'Prediction Logic:',
+                'logic-desc': 'Our algorithm factors in current pollutant levels, wind speed, and humidity to predict potential spikes in the coming days.',
+                'edu-section-title': 'Understanding Air Quality Index (AQI)',
+                'edu-impact-title': 'AQI Categories & Health Impacts',
+                'edu-safety-title': 'Safety Precautions',
+                'reg-title': 'Citizen Alert Registration',
+                'reg-desc': 'Sign up to receive critical air quality warnings for your residential or work area.',
+                'lbl-name': 'Full Name',
+                'lbl-mobile': 'Mobile Number (for SMS Alerts)',
+                'lbl-pincode': 'Preferred PIN Code',
+                'lbl-alert-lang': 'Preferred Language for Alerts',
+                'check-sms': 'SMS Alerts (NIC SMS Gateway)',
+                'check-email': 'Email Alerts (NIC Mail)',
+                'btn-submit-reg': 'Confirm Registration',
+                'footer-desc': 'Nayaruvi is a national platform for clean air awareness and monitoring, supporting the health of 1.4 billion citizens.',
+                'footer-links-title': 'Links',
+                'footer-support-title': 'Support',
+                'link-privacy': 'Privacy Policy',
+                'link-report': 'Report Error',
+                'link-api': 'API Details',
+                'footer-copy': '© 2025 Team Nayaruvi | Panimalar Engineering College | Bharatiya Antariksh Hackathon',
+                'advice-good': 'Air quality is satisfactory. No risk. Enjoy outdoor activities.',
+                'advice-satisfactory': 'Minor breathing discomfort to sensitive people. Mask not mandatory.',
+                'advice-moderate': 'Sensitive groups (asthma/heart disease) should limit prolonged outdoor exertion.',
+                'advice-poor': 'Wear N95 masks. Everyone may begin to feel discomfort. Close windows.',
+                'advice-severe': 'Health alert: Serious risk for all. Avoid outdoors completely.',
+                'aqi-categories': [
+                    { label: 'Good (0-50)', desc: 'Minimal impact on health.' },
+                    { label: 'Satisfactory (51-100)', desc: 'Minor breathing discomfort to sensitive people.' },
+                    { label: 'Moderate (101-200)', desc: 'Breathing discomfort to people with lungs/heart disease.' },
+                    { label: 'Poor (201-300)', desc: 'Discomfort on prolonged exposure to most people.' },
+                    { label: 'Very Poor (301-400)', desc: 'Respiratory illness on prolonged exposure.' },
+                    { label: 'Severe (>400)', desc: 'Affects healthy people; impacts lungs of all.' }
+                ],
+                'safety-precautions': [
+                    { icon: 'fa-mask', text: 'Use N95/N99 masks when AQI exceeds 200.' },
+                    { icon: 'fa-house-chimney-window', text: 'Close windows during peak pollution hours (morning/evening).' },
+                    { icon: 'fa-air-purifier', text: 'Use indoor air purifiers with HEPA filters if available.' },
+                    { icon: 'fa-person-running', text: 'Avoid intense outdoor physical activities in Poor/Severe conditions.' }
+                ]
+            },
+            'hi': {
+                'gov-header': 'भारत सरकार | पर्यावरण, वन और जलवायु परिवर्तन मंत्रालय',
+                'header-subtitle': 'राष्ट्रीय वायु गुणवत्ता केंद्र',
+                'nav-home': 'होम',
+                'nav-map': 'कमांड मैप',
+                'nav-forecast': 'पूर्वानुमान',
+                'nav-info': 'स्वास्थ्य एवं जानकारी',
+                'alert-signup': 'अलर्ट पंजीकरण',
+                'hero-title': 'पर्यावरण संबंधी जानकारी, अभी देखें',
+                'hero-desc': 'CPCB और ISRO एकीकरण द्वारा संचालित वायु गुणवत्ता डेटा, भविष्य के रुझान और व्यक्तिगत स्वास्थ्य परामर्श प्राप्त करें।',
+                'search-placeholder': 'शहर या पिन कोड द्वारा खोजें (जैसे 110001, दिल्ली)...',
+                'btn-monitor': 'निगरानी',
+                'live-status': 'लाइव स्थिति',
+                'health-rec': 'स्वास्थ्य परामर्श',
+                'pollutant-title': 'प्रमुख प्रदूषक सांद्रता (IAQI)',
+                'station-info-label': 'स्टेशन की जानकारी:',
+                'alert-cta-title': 'व्यक्तिगत सुरक्षा अलर्ट',
+                'alert-cta-desc': 'जब आपके पिन कोड में प्रदूषण का स्तर असुरक्षित हो जाए, तो तुरंत एसएमएस, ईमेल या सूचना प्राप्त करने के लिए पंजीकरण करें।',
+                'btn-get-alerts': 'अलर्ट प्राप्त करें',
+                'map-section-title': 'राष्ट्रीय वायु गुणवत्ता कमांड मैप',
+                'map-btn-value': 'AQI वैल्यू मैप',
+                'map-btn-heat': 'हीट मैप व्यू',
+                'map-btn-sources': 'प्रदूषण स्रोत',
+                'map-footer': 'पूरे भारत में 200+ निगरानी स्टेशनों से वास्तविक समय के डेटा का चित्रण। वर्ल्ड एयर क्वालिटी इंडेक्स ओपन डेटा प्लेटफॉर्म के साथ एकीकृत।',
+                'forecast-section-title': '24-72 घंटे के पूर्वानुमान रुझान',
+                'forecast-chart-title': 'ARIMA-आधारित पूर्वानुमान विश्लेषण',
+                'forecast-chart-desc': 'ऐतिहासिक सेंसर डेटा के आधार पर AQI रुझानों का संभाव्यता मॉडलिंग।',
+                'opt-24h': 'अगले 24 घंटे',
+                'opt-72h': 'अगले 72 घंटे',
+                'logic-label': 'पूर्वानुमान तर्क:',
+                'logic-desc': 'हमारा एल्गोरिदम आने वाले दिनों में संभावित वृद्धि की भविष्यवाणी करने के लिए वर्तमान प्रदूषक स्तरों, हवा की गति और आर्द्रता पर विचार करता है।',
+                'edu-section-title': 'वायु गुणवत्ता सूचकांक (AQI) को समझना',
+                'edu-impact-title': 'AQI श्रेणियां और स्वास्थ्य प्रभाव',
+                'edu-safety-title': 'सुरक्षा सावधानियां',
+                'reg-title': 'नागरिक अलर्ट पंजीकरण',
+                'reg-desc': 'अपने आवासीय या कार्य क्षेत्र के लिए महत्वपूर्ण वायु गुणवत्ता चेतावनी प्राप्त करने के लिए साइन अप करें।',
+                'lbl-name': 'पूरा नाम',
+                'lbl-mobile': 'मोबाइल नंबर (एसएमएस अलर्ट के लिए)',
+                'lbl-pincode': 'पसंदीदा पिन कोड',
+                'lbl-alert-lang': 'अलर्ट के लिए पसंदीदा भाषा',
+                'check-sms': 'एसएमएस अलर्ट (NIC एसएमएस गेटवे)',
+                'check-email': 'ईमेल अलर्ट (NIC मेल)',
+                'btn-submit-reg': 'पंजीकरण की पुष्टि करें',
+                'footer-desc': 'नयरुवी स्वच्छ हवा जागरूकता और निगरानी के लिए एक राष्ट्रीय मंच है, जो 1.4 अरब नागरिकों के स्वास्थ्य का समर्थन करता है।',
+                'footer-links-title': 'लिंक्स',
+                'footer-support-title': 'सहायता',
+                'link-privacy': 'गोपनीयता नीति',
+                'link-report': 'त्रुटि रिपोर्ट करें',
+                'link-api': 'API विवरण',
+                'footer-copy': '© 2025 टीम नयरुवी | पणिमलर इंजीनियरिंग कॉलेज | भारतीय अंतरिक्ष हैकाथॉन',
+                'advice-good': 'वायु गुणवत्ता संतोषजनक है। कोई जोखिम नहीं। बाहरी गतिविधियों का आनंद लें।',
+                'advice-satisfactory': 'संवेदनशील लोगों को सांस लेने में मामूली असुविधा। मास्क अनिवार्य नहीं है।',
+                'advice-moderate': 'संवेदनशील समूहों (अस्थमा/हृदय रोग) को लंबे समय तक बाहरी परिश्रम को सीमित करना चाहिए।',
+                'advice-poor': 'N95 मास्क पहनें। हर कोई असुविधा महसूस कर सकता है। खिड़कियां बंद रखें।',
+                'advice-severe': 'स्वास्थ्य चेतावनी: सभी के लिए गंभीर जोखिम। बाहर जाने से पूरी तरह बचें।',
+                'aqi-categories': [
+                    { label: 'अच्छा (0-50)', desc: 'स्वास्थ्य पर न्यूनतम प्रभाव।' },
+                    { label: 'संतोषजनक (51-100)', desc: 'संवेदनशील लोगों को सांस लेने में मामूली असुविधा।' },
+                    { label: 'मध्यम (101-200)', desc: 'फेफड़े/हृदय रोग वाले लोगों को सांस लेने में तकलीफ।' },
+                    { label: 'खराब (201-300)', desc: 'ज्यादातर लोगों को लंबे समय तक संपर्क में रहने पर असुविधा।' },
+                    { label: 'बहुत खराब (301-400)', desc: 'लंबे समय तक संपर्क में रहने पर श्वसन संबंधी बीमारी।' },
+                    { label: 'गंभीर (>400)', desc: 'स्वस्थ लोगों को प्रभावित करता है; सभी के फेफड़ों पर प्रभाव डालता है।' }
+                ],
+                'safety-precautions': [
+                    { icon: 'fa-mask', text: 'जब AQI 200 से अधिक हो जाए तो N95/N99 मास्क का उपयोग करें।' },
+                    { icon: 'fa-house-chimney-window', text: 'प्रदूषण के चरम घंटों (सुबह/शाम) के दौरान खिड़कियां बंद रखें।' },
+                    { icon: 'fa-air-purifier', text: 'यदि उपलब्ध हो तो HEPA फिल्टर वाले इनडोर एयर प्यूरीफायर का उपयोग करें।' },
+                    { icon: 'fa-person-running', text: 'खराब/गंभीर परिस्थितियों में तीव्र बाहरी शारीरिक गतिविधियों से बचें।' }
+                ]
+            },
+            'ta': {
+                'gov-header': 'இந்திய அரசு | சுற்றுச்சூழல், வனம் மற்றும் காலநிலை மாற்ற அமைச்சகம்',
+                'header-subtitle': 'தேசிய காற்றின் தர மையம்',
+                'nav-home': 'முகப்பு',
+                'nav-map': 'கட்டளை வரைபடம்',
+                'nav-forecast': 'முன்னறிவிப்பு',
+                'nav-info': 'சுகாதாரம் & தகவல்',
+                'alert-signup': 'எச்சரிக்கை பதிவு',
+                'hero-title': 'உடனடி சுற்றுச்சூழல் நுண்ணறிவு',
+                'hero-desc': 'CPCB மற்றும் ISRO ஒருங்கிணைப்பு மூலம் காற்றின் தர தரவு, முன்னறிவிப்பு மற்றும் தனிப்பயனாக்கப்பட்ட சுகாதார ஆலோசனைகளைப் பெறுங்கள்.',
+                'search-placeholder': 'நகரம் அல்லது பின் கோட் மூலம் தேடுங்கள் (எ.கா. 600001, சென்னை)...',
+                'btn-monitor': 'கண்காணிப்பு',
+                'live-status': 'நேரடி நிலை',
+                'health-rec': 'சுகாதார ஆலோசனை',
+                'pollutant-title': 'முக்கிய மாசுபடுத்தும் செறிவு (IAQI)',
+                'station-info-label': 'நிலைய விவரம்:',
+                'alert-cta-title': 'தனிப்பயனாக்கப்பட்ட பாதுகாப்பு எச்சரிக்கைகள்',
+                'alert-cta-desc': 'உங்கள் பகுதியில் காற்று தரம் மோசமடையும் போது உடனடி SMS, மின்னஞ்சல் அல்லது அறிவிப்புகளைப் பெற பதிவு செய்யுங்கள்.',
+                'btn-get-alerts': 'எச்சரிக்கையைப் பெறுங்கள்',
+                'map-section-title': 'தேசிய காற்றின் தர வரைபடம்',
+                'map-btn-value': 'மதிப்பு வரைபடம்',
+                'map-btn-heat': 'வெப்ப வரைபடம்',
+                'map-btn-sources': 'மாசு ஆதாரங்கள்',
+                'map-footer': 'இந்தியா முழுவதும் 200+ கண்காணிப்பு நிலையங்களின் தரவு. உலக காற்றின் தர குறியீட்டு தளத்துடன் ஒருங்கிணைக்கப்பட்டது.',
+                'forecast-section-title': '24-72 மணிநேர முன்னறிவிப்பு',
+                'forecast-chart-title': 'ARIMA அடிப்படையிலான முன்னறிவிப்பு',
+                'forecast-chart-desc': 'வரலாற்று தரவுகளின் அடிப்படையில் காற்றின் தர மாற்றங்களை முன்கூட்டியே கணித்தல்.',
+                'opt-24h': 'அடுத்த 24 மணிநேரம்',
+                'opt-72h': 'அடுத்த 72 மணிநேரம்',
+                'logic-label': 'கணிப்பு தர்க்கம்:',
+                'logic-desc': 'காற்றின் வேகம் மற்றும் ஈரப்பதம் போன்ற காரணிகளை வைத்து வரவிருக்கும் நாட்களில் காற்றின் தரம் கணிக்கப்படுகிறது.',
+                'edu-section-title': 'காற்றின் தர குறியீட்டை (AQI) புரிந்துகொள்வது',
+                'edu-impact-title': 'AQI பிரிவுகள் மற்றும் சுகாதார பாதிப்புகள்',
+                'edu-safety-title': 'பாதுகாப்பு முன்னெச்சரிக்கைகள்',
+                'reg-title': 'குடிமக்கள் எச்சரிக்கை பதிவு',
+                'reg-desc': 'உங்கள் இருப்பிடத்திற்கான முக்கியமான காற்றின் தர எச்சரிக்கைகளைப் பெற பதிவு செய்யுங்கள்.',
+                'lbl-name': 'முழு பெயர்',
+                'lbl-mobile': 'கைபேசி எண் (SMS எச்சரிக்கைக்கு)',
+                'lbl-pincode': 'விருப்பமான பின் கோட்',
+                'lbl-alert-lang': 'எச்சரிக்கைக்கான மொழி',
+                'check-sms': 'SMS எச்சரிக்கைகள் (NIC SMS Gateway)',
+                'check-email': 'மின்னஞ்சல் எச்சரிக்கைகள் (NIC Mail)',
+                'btn-submit-reg': 'பதிவை உறுதிப்படுத்துக',
+                'footer-desc': 'நயருவி என்பது 1.4 பில்லியன் குடிமக்களின் ஆரோக்கியத்திற்காக உருவாக்கப்பட்ட காற்றின் தர கண்காணிப்பு தளமாகும்.',
+                'footer-links-title': 'இணைப்புகள்',
+                'footer-support-title': 'ஆதரவு',
+                'link-privacy': 'தனியுரிமைக் கொள்கை',
+                'link-report': 'பிழையைப் புகாரளிக்கவும்',
+                'link-api': 'API விவரங்கள்',
+                'footer-copy': '© 2025 டீம் நயருவி | பணிமலர் பொறியியல் கல்லூரி | பாரதிய அந்தரிக்ஷ் ஹேக்கத்தான்',
+                'advice-good': 'காற்றின் தரம் திருப்திகரமாக உள்ளது. ஆபத்து இல்லை. வெளி நடவடிக்கைகளை மேற்கொள்ளலாம்.',
+                'advice-satisfactory': 'உணர்திறன் கொண்டவர்களுக்கு சிறிய சுவாச அசௌகரியம் ஏற்படலாம். முகக்கவசம் கட்டாயமில்லை.',
+                'advice-moderate': 'சுவாசப் பிரச்சனை உள்ளவர்கள் நீண்ட நேரம் வெளியில் இருப்பதை தவிர்க்க வேண்டும்.',
+                'advice-poor': 'N95 முகக்கவசம் அணியவும். அனைவருக்கும் அசௌகரியம் ஏற்படலாம். ஜன்னல்களை மூடி வைக்கவும்.',
+                'advice-severe': 'சுகாதார எச்சரிக்கை: அனைவருக்கும் தீவிர ஆபத்து. வெளியில் செல்வதை முற்றிலும் தவிர்க்கவும்.',
+                'aqi-categories': [
+                    { label: 'நல்லது (0-50)', desc: 'ஆரோக்கியத்தில் குறைந்தபட்ச தாக்கம்.' },
+                    { label: 'திருப்திகரமானது (51-100)', desc: 'உணர்திறன் கொண்டவர்களுக்கு சிறிய சுவாச அசௌகரியம்.' },
+                    { label: 'மிதமானது (101-200)', desc: 'இதய/சுவாச நோய் உள்ளவர்களுக்கு சுவாச அசௌகரியம்.' },
+                    { label: 'மோசமானது (201-300)', desc: 'நீண்ட நேரம் வெளியில் இருந்தால் அசௌகரியம் ஏற்படலாம்.' },
+                    { label: 'மிகவும் மோசமானது (301-400)', desc: 'நீண்ட நேர வெளிப்பாட்டின் போது சுவாச நோய் ஏற்படலாம்.' },
+                    { label: 'தீவிரமானது (>400)', desc: 'ஆரோக்கியமானவர்களையும் பாதிக்கும்; நுரையீரலை கடுமையாக பாதிக்கும்.' }
+                ],
+                'safety-precautions': [
+                    { icon: 'fa-mask', text: 'AQI 200-க்கு மேல் இருக்கும் போது N95/N99 முகக்கவசங்களை அணியவும்.' },
+                    { icon: 'fa-house-chimney-window', text: 'மாசு அதிகமாக இருக்கும் நேரங்களில் (காலை/மாலை) ஜன்னல்களை மூடி வைக்கவும்.' },
+                    { icon: 'fa-air-purifier', text: 'HEPA வடிகட்டிகளுடன் கூடிய காற்று சுத்திகரிப்பான்களை பயன்படுத்தவும்.' },
+                    { icon: 'fa-person-running', text: 'காற்றின் தரம் மோசமாக இருக்கும் போது கடினமான உடற்பயிற்சிகளை தவிர்க்கவும்.' }
+                ]
+            }
+        };
+
+        window.onload = function () {
+            initMap();
+            initChart();
+            fetchAQIData('Chennai'); // Startup location
+            setupLanguageHandler();
+            updateStaticText(); // Load initial language
+            loadAQILegend();
+            restoreUserSession();
+        };
+function loadAQILegend() {
+  const container = document.getElementById("aqi-legend-container");
+
+  // ✅ If container not found, stop (no crash)
+  if (!container) {
+    console.warn("AQI legend container not found: #aqi-legend-container");
+    return;
+  }
+
+  // ✅ Force visible (sometimes CSS hides it)
+  container.style.display = "grid";
+  container.style.visibility = "visible";
+  container.style.opacity = "1";
+
+  // ✅ Safe translations fallback
+  const dict = (window.translations && window.translations[window.currentLang])
+    ? window.translations[window.currentLang]
+    : (window.translations && window.translations["en"])
+      ? window.translations["en"]
+      : null;
+
+  if (!dict || !dict["aqi-categories"]) {
+    // ✅ Show a small message instead of blank
+    container.innerHTML = `<div style="padding:12px;border:1px solid rgba(0,0,0,0.12);border-radius:12px;color:#555;">
+      Legend data not loaded. Check <code>translations</code> / <code>currentLang</code>.
+    </div>`;
+    console.warn("Legend data missing. currentLang =", window.currentLang, "translations =", window.translations);
+    return;
+  }
+
+  const colors = ['--aqi-good','--aqi-satisfactory','--aqi-moderate','--aqi-poor','--aqi-very-poor','--aqi-severe'];
+
+  container.innerHTML = "";
+
+  dict["aqi-categories"].forEach((cat, index) => {
+    const div = document.createElement("div");
+    div.className = "aqi-legend-item";
+    div.innerHTML = `
+      <div class="legend-color" style="background: var(${colors[index]});"></div>
+      <div><strong>${cat.label}:</strong> ${cat.desc}</div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function setText(id, value){
+  const el = document.getElementById(id);
+  if (el) el.innerText = value;
+}
+
+function setHTML(id, value){
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = value;
+}
+
+        // --- Multi-Language Logic ---
+        function updateStaticText() {
+            const dict = translations[currentLang];
+
+            // Text Content Updates
+            document.getElementById('gov-header-text').innerText = dict['gov-header'];
+            document.getElementById('header-subtitle').innerText = dict['header-subtitle'];
+            document.getElementById('nav-home').innerText = dict['nav-home'];
+            document.querySelectorAll('[data-i18n="nav-home"]').forEach(el => el.innerText = dict['nav-home']);
+            document.querySelectorAll('[data-i18n="nav-map"]').forEach(el => el.innerText = dict['nav-map']);
+            document.querySelectorAll('[data-i18n="nav-forecast"]').forEach(el => el.innerText = dict['nav-forecast']);
+            document.querySelectorAll('[data-i18n="nav-info"]').forEach(el => el.innerText = dict['nav-info']);
+
+            document.getElementById('alert-signup-btn').innerHTML = `<i class="fa fa-bell"></i> ${dict['alert-signup']}`;
+            document.getElementById('hero-title').innerText = dict['hero-title'];
+            document.getElementById('hero-desc').innerText = dict['hero-desc'];
+            document.getElementById('city-search').placeholder = dict['search-placeholder'];
+            document.getElementById('btn-monitor-text').innerText = dict['btn-monitor'];
+
+            document.getElementById('live-status-label').innerText = dict['live-status'];
+            document.getElementById('health-rec-label').innerText = dict['health-rec'];
+            document.getElementById('pollutant-title').innerText = dict['pollutant-title'];
+            document.getElementById('station-info-label').innerText = dict['station-info-label'];
+
+            document.getElementById('alert-cta-title').innerText = dict['alert-cta-title'];
+            document.getElementById('alert-cta-desc').innerText = dict['alert-cta-desc'];
+            document.getElementById('btn-get-alerts').innerText = dict['btn-get-alerts'];
+
+            document.getElementById('map-section-title').innerText = dict['map-section-title'];
+            document.getElementById('map-btn-value').innerText = dict['map-btn-value'];
+            document.getElementById('map-btn-heat').innerText = dict['map-btn-heat'];
+            document.getElementById('map-btn-sources').innerText = dict['map-btn-sources'];
+            document.getElementById('map-footer-text').innerText = dict['map-footer'];
+
+            document.getElementById('forecast-section-title').innerText = dict['forecast-section-title'];
+            document.getElementById('forecast-chart-title').innerText = dict['forecast-chart-title'];
+            document.getElementById('forecast-chart-desc').innerText = dict['forecast-chart-desc'];
+            document.getElementById('opt-24h').innerText = dict['opt-24h'];
+            document.getElementById('opt-72h').innerText = dict['opt-72h'];
+            document.getElementById('logic-label').innerText = dict['logic-label'];
+            document.getElementById('logic-desc').innerText = dict['logic-desc'];
+
+            document.getElementById('edu-section-title').innerText = dict['edu-section-title'];
+            document.getElementById('edu-impact-title').innerText = dict['edu-impact-title'];
+            document.getElementById('edu-safety-title').innerText = dict['edu-safety-title'];
+
+            document.getElementById('reg-title').innerText = dict['reg-title'];
+            document.getElementById('reg-desc').innerText = dict['reg-desc'];
+            document.getElementById('lbl-name').innerText = dict['lbl-name'];
+            document.getElementById('lbl-mobile').innerText = dict['lbl-mobile'];
+            document.getElementById('lbl-pincode').innerText = dict['lbl-pincode'];
+            document.getElementById('lbl-alert-lang').innerText = dict['lbl-alert-lang'];
+            document.getElementById('inp-name').placeholder = `e.g. ${currentLang === 'hi' ? 'डॉ. अब्दुल कलाम' : (currentLang === 'ta' ? 'டாக்டர் அப்துல் கலாம்' : 'Dr. Abdul Kalam')}`;
+            document.getElementById('check-sms').innerText = dict['check-sms'];
+            document.getElementById('check-email').innerText = dict['check-email'];
+            document.getElementById('btn-submit-reg').innerText = dict['btn-submit-reg'];
+
+            document.getElementById('footer-desc').innerText = dict['footer-desc'];
+            document.getElementById('footer-links-title').innerText = dict['footer-links-title'];
+            document.getElementById('footer-support-title').innerText = dict['footer-support-title'];
+            document.getElementById('link-privacy').innerText = dict['link-privacy'];
+            document.getElementById('link-report').innerText = dict['link-report'];
+            document.getElementById('link-api').innerText = dict['link-api'];
+            document.getElementById('footer-copy').innerText = dict['footer-copy'];
+
+            // Update Legend
+            loadAQILegend();
+
+            // Render Safety List
+            const safetyList = document.getElementById('safety-list');
+            safetyList.innerHTML = '';
+            dict['safety-precautions'].forEach(prec => {
+                safetyList.innerHTML += `
+                    <li style="margin-bottom: 15px; display: flex; gap: 10px;">
+                        <i class="fa ${prec.icon}" style="color: var(--gov-blue);"></i>
+                        <span>${prec.text}</span>
+                    </li>
+                `;
+            });
+
+            // If data is already loaded, update advice manually
+            if (currentAQI > 0) {
+                updateHealthAdvice(currentAQI);
+            }
+        }
+
+        function setupLanguageHandler() {
+            document.getElementById('lang-select').addEventListener('change', (e) => {
+                currentLang = e.target.value;
+                updateStaticText();
+            });
+        }
+
+        function aqiToColor(aqi){
+    // simple gradient mapping for UI (no external libs)
+    if (aqi <= 50) return "#c8e6c9";      // green
+    if (aqi <= 100) return "#fff9c4";     // yellow
+    if (aqi <= 200) return "#ffe0b2";     // orange
+    if (aqi <= 300) return "#ffccbc";     // red-ish
+    return "#ffcdd2";                    // deeper red
+}
+
+function formatWindow(startHour){
+    const endHour = startHour + 2;
+    const pad = (n)=> String(n).padStart(2,'0');
+    return `${pad(startHour)}:00 – ${pad(endHour)}:00`;
+}
+
+/**
+ * Build hourly AQI list for next 24 hours using linear interpolation.
+ * Requires anchor points like: [{h:0,val:...},{h:2,val:...},{h:4,val:...},...,{h:24,val:...}]
+ */
+function buildHourlyFromAnchors(anchors){
+    anchors.sort((a,b)=>a.h-b.h);
+    const hourly = new Array(25).fill(null); // 0..24 inclusive
+
+    // Fill anchor hours
+    anchors.forEach(a=>{
+        const hh = Math.max(0, Math.min(24, Math.round(a.h)));
+        hourly[hh] = a.val;
+    });
+
+    // Interpolate missing hours
+    let lastKnown = null;
+    for (let i=0;i<=24;i++){
+        if (hourly[i] != null){
+            lastKnown = i;
+            continue;
+        }
+        // find next known
+        let nextKnown = null;
+        for (let j=i+1;j<=24;j++){
+            if (hourly[j] != null){ nextKnown = j; break; }
+        }
+        if (lastKnown == null && nextKnown != null){
+            hourly[i] = hourly[nextKnown];
+        } else if (lastKnown != null && nextKnown == null){
+            hourly[i] = hourly[lastKnown];
+        } else if (lastKnown != null && nextKnown != null){
+            const t = (i - lastKnown) / (nextKnown - lastKnown);
+            hourly[i] = Math.round(hourly[lastKnown] + t * (hourly[nextKnown] - hourly[lastKnown]));
+        } else {
+            hourly[i] = 0;
+        }
+    }
+
+    // Return 0..23 (next 24 hours)
+    return hourly.slice(0,24);
+}
+
+async function fetchAQIAndUpdate() {
+  try {
+    const res = await fetch(AQI_API_URL);
+    const json = await res.json();
+
+    if (json.status !== "ok") return;
+
+    const currentAQI = Number(json.data.aqi);
+    const cityName = json.data.city.name;
+
+    // Update UI
+    document.getElementById("aqi-main-value").innerText = currentAQI;
+    document.getElementById("city-name").innerText = cityName;
+
+    // 🔥 AUTO CALL CHECK
+    triggerCall(currentAQI, cityName);
+
+
+  } catch (err) {
+    console.log("AQI fetch error", err);
+  }
+}
+
+// Auto refresh every 2 minutes
+setInterval(fetchAQIAndUpdate, 120000);
+
+// First load
+fetchAQIAndUpdate();
+
+function findBestWorst2Hour(hourly){
+    let best = {start:0, avg: Infinity};
+    let worst = {start:0, avg: -Infinity};
+
+    for (let i=0;i<=22;i++){
+        const avg = (hourly[i] + hourly[i+1]) / 2;
+        if (avg < best.avg) best = {start:i, avg};
+        if (avg > worst.avg) worst = {start:i, avg};
+    }
+    return {best, worst};
+}
+
+function riskLabel(aqi){
+    if (aqi <= 50) return "Good";
+    if (aqi <= 100) return "Moderate";
+    if (aqi <= 200) return "Unhealthy";
+    if (aqi <= 300) return "Very Unhealthy";
+    return "Hazardous";
+}
+
+function renderRiskWindow(hourly){
+    // ===== REAL-TIME BASE (future hours only) =====
+    const nowBase = new Date();
+    nowBase.setMinutes(0, 0, 0);
+    nowBase.setHours(nowBase.getHours() + 1); // start from next full hour
+
+    const pad = (n) => String(n).padStart(2, "0");
+
+    function realTimeWindow(offset){
+        const start = new Date(nowBase.getTime() + offset * 60 * 60 * 1000);
+        const end   = new Date(nowBase.getTime() + (offset + 2) * 60 * 60 * 1000);
+        return `${pad(start.getHours())}:00 – ${pad(end.getHours())}:00`;
+    }
+
+       // ===== Practical hours for BEST window (morning only) =====
+    const PRACTICAL_START = 6;   // 06:00 AM
+const PRACTICAL_END   = 20;  // 08:00 PM
+
+
+    // converts offset hour -> real clock hour
+    function offsetToClockHour(offset){
+        const t = new Date(nowBase.getTime() + offset * 60 * 60 * 1000);
+        return t.getHours();
+    }
+
+    function isPractical(offset){
+        const h1 = offsetToClockHour(offset);
+        const h2 = offsetToClockHour(offset + 1);
+        // both hours must be within practical range
+        return (h1 >= PRACTICAL_START && h1 <= PRACTICAL_END) &&
+               (h2 >= PRACTICAL_START && h2 <= PRACTICAL_END);
+    }
+
+    // ===== SMART WINDOW PICKING =====
+function pickBestWorst(hourly){
+    let best  = { start: null, score: Infinity, avg: Infinity };
+    let worst = { start: null, score: -Infinity, avg: -Infinity };
+
+    for (let i = 0; i <= 22; i++){
+        if (!isPractical(i)) continue; // ✅ BOTH best and worst only in practical hours
+
+        const a = hourly[i], b = hourly[i+1];
+        const avg = (a + b) / 2;
+        const volatility = Math.abs(a - b);
+        const slope = (b - a);
+
+        // BEST: low + stable
+        const bestScore  = avg + (volatility * 0.65);
+
+        // WORST: high + rising
+        const worstScore = avg + (Math.max(0, slope) * 0.85);
+
+        if (bestScore < best.score)   best  = { start: i, score: bestScore, avg };
+        if (worstScore > worst.score) worst = { start: i, score: worstScore, avg };
+    }
+
+    // Fallback (rare): if no practical window exists in next 24h, use global
+    if (best.start === null || worst.start === null){
+        let gBest = { start: 0, score: Infinity, avg: Infinity };
+        let gWorst = { start: 0, score: -Infinity, avg: -Infinity };
+
+        for (let i = 0; i <= 22; i++){
+            const a = hourly[i], b = hourly[i+1];
+            const avg = (a + b) / 2;
+            const volatility = Math.abs(a - b);
+            const slope = (b - a);
+
+            const bestScore  = avg + (volatility * 0.65);
+            const worstScore = avg + (Math.max(0, slope) * 0.85);
+
+            if (bestScore < gBest.score)   gBest  = { start: i, score: bestScore, avg };
+            if (worstScore > gWorst.score) gWorst = { start: i, score: worstScore, avg };
+        }
+        if (best.start === null) best = gBest;
+        if (worst.start === null) worst = gWorst;
+    }
+
+    // avoid overlapping best/worst
+    const minGap = 3;
+    if (Math.abs(worst.start - best.start) < minGap){
+        let altWorst = worst;
+        for (let i = 0; i <= 22; i++){
+            if (!isPractical(i)) continue;
+            if (Math.abs(i - best.start) < minGap) continue;
+
+            const a = hourly[i], b = hourly[i+1];
+            const avg = (a + b) / 2;
+            const slope = (b - a);
+            const worstScore = avg + (Math.max(0, slope) * 0.85);
+
+            if (worstScore > altWorst.score){
+                altWorst = { start: i, score: worstScore, avg };
+            }
+        }
+        worst = altWorst;
+    }
+
+    return { best, worst };
+}
+
+
+    const { best, worst } = pickBestWorst(hourly);
+
+    // Confidence display
+    const minV = Math.min(...hourly);
+    const maxV = Math.max(...hourly);
+    const range = Math.max(1, maxV - minV);
+    const confidence = Math.max(55, Math.min(92, Math.round(92 - (range * 0.35))));
+
+    // ✅ Best/Worst UI (real time + practical)
+    document.getElementById("best-window").innerHTML =
+      `<strong>${realTimeWindow(best.start)}</strong> • Pred ~ <strong>${Math.round(best.avg)}</strong> AQI • ${riskLabel(best.avg)}`;
+
+    document.getElementById("worst-window").innerHTML =
+      `<strong>${realTimeWindow(worst.start)}</strong> • Pred ~ <strong>${Math.round(worst.avg)}</strong> AQI • ${riskLabel(worst.avg)}`;
+
+    // ✅ Note (no API mention)
+    const noteEl = document.getElementById("risk-timeline-note");
+    if (noteEl) noteEl.innerText = `ML prediction (confidence ${confidence}%) • Best time chosen from practical hours (05:00–21:00)`;
+
+    // ✅ Timeline
+    const container = document.getElementById("risk-timeline");
+    container.innerHTML = "";
+
+    for (let i = 0; i < 24; i++){
+        const predictedAQI = Math.round(hourly[i]);
+        const t = new Date(nowBase.getTime() + i * 60 * 60 * 1000);
+        const hh = pad(t.getHours());
+
+        const prev = i === 0 ? predictedAQI : Math.round(hourly[i-1]);
+        const arrow = predictedAQI > prev ? "↑" : predictedAQI < prev ? "↓" : "→";
+
+        const div = document.createElement("div");
+        div.className = "risk-hour";
+        div.style.background = aqiToColor(predictedAQI);
+        div.innerHTML = `<span>${predictedAQI}</span>`;
+
+        div.title = `${hh}:00  |  Pred AQI: ${predictedAQI} ${arrow} (${riskLabel(predictedAQI)})`;
+
+        if (i === best.start || i === best.start + 1) div.classList.add("best");
+        if (i === worst.start || i === worst.start + 1) div.classList.add("worst");
+
+        container.appendChild(div);
+    }
+}
+
+
+
+        function updateHealthAdvice(aqi) {
+            const dict = translations[currentLang];
+            let advice = '';
+            if (aqi <= 50) advice = dict['advice-good'];
+            else if (aqi <= 100) advice = dict['advice-satisfactory'];
+            else if (aqi <= 200) advice = dict['advice-moderate'];
+            else if (aqi <= 300) advice = dict['advice-poor'];
+            else advice = dict['advice-severe'];
+
+            document.getElementById('health-advice').innerText = advice;
+        }
+
+        // --- Core Logic ---
+        async function fetchAQIData(query) {
+    const btn = document.getElementById('search-btn');
+    const label = document.getElementById('current-location-label');
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+
+        const searchRes = await fetch(`${WAQI_BASE}/search/?token=${WAQI_TOKEN}&keyword=${encodeURIComponent(query)}`);
+        const searchData = await searchRes.json();
+
+        if (searchData.status !== 'ok' || !searchData.data || searchData.data.length === 0) {
+            throw new Error("No stations found for this location.");
+        }
+
+        const uid = searchData.data[0].uid;
+
+        // ✅ Reset spike history when location changes (so values are correct per city)
+        // Add these globals somewhere once:
+        // let lastUID = null;
+        // let aqiHistoryValues = [];
+        if (typeof lastUID === "undefined") window.lastUID = null; // safe fallback
+        if (window.lastUID !== uid) {
+            window.lastUID = uid;
+            if (typeof aqiHistoryValues !== "undefined") aqiHistoryValues = [];
+        }
+
+        const feedRes = await fetch(`${WAQI_BASE}/feed/@${uid}/?token=${WAQI_TOKEN}`);
+        const feedData = await feedRes.json();
+
+        if (feedData.status === 'ok') {
+            updateDashboard(feedData.data);
+        } else {
+            throw new Error("Live feed not available for this station.");
+        }
+
+    } catch (err) {
+        label.innerText = "Error: " + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa fa-search"></i> ${translations[currentLang]['btn-monitor']}`;
+    }
+}
+
+function updateDashboard(data) {
+    currentAQI = data.aqi;
+    if (Number.isFinite(Number(data.aqi))) {
+    aqiHistoryValues.push(Number(data.aqi));
+    if (aqiHistoryValues.length > 72) aqiHistoryValues = aqiHistoryValues.slice(-72);
+}
+
+
+    // ✅ Save WAQI forecast from API (daily forecast arrays)
+    waqiDailyForecast = data?.forecast?.daily || null;
+
+    // ✅ Save history for Peak Spike Predictor (last 72 readings)
+    if (Number.isFinite(Number(data.aqi))) {
+        aqiHistoryValues.push(Number(data.aqi));
+        if (aqiHistoryValues.length > 72) aqiHistoryValues = aqiHistoryValues.slice(-72);
+    }
+
+    // Send AQI to ML service (if you are using it elsewhere)
+    fetch("http://127.0.0.1:5001/store-aqi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aqi: data.aqi })
+    });
+
+    document.getElementById('aqi-main-value').innerText = data.aqi;
+    document.getElementById('current-location-label').innerText = data.city.name;
+    document.getElementById('update-time').innerText = "Real-time update: " + data.time.s;
+    document.getElementById('station-info').innerText = data.attributions[0]?.name || "Unknown station";
+    triggerCall(Number(data.aqi), data.city.name);
+    const params = ['pm25', 'pm10', 'no2', 'so2', 'o3', 'co'];
+    params.forEach(p => {
+        const val = data.iaqi && data.iaqi[p] ? data.iaqi[p].v : '--';
+        document.getElementById(`m-${p}`).innerText = val;
+    });
+
+    // UI Categories
+    let color = '';
+    if (data.aqi <= 50) color = "var(--aqi-good)";
+    else if (data.aqi <= 100) color = "var(--aqi-satisfactory)";
+    else if (data.aqi <= 200) color = "var(--aqi-moderate)";
+    else if (data.aqi <= 300) color = "var(--aqi-poor)";
+    else if (data.aqi <= 400) color = "var(--aqi-very-poor)";
+    else color = "var(--aqi-severe)";
+
+    const statusEl = document.getElementById('aqi-status-text');
+    const mainCard = document.getElementById('main-aqi-card');
+    const pointer = document.getElementById('aqi-pointer');
+
+    // Find localized label
+    const dict = translations[currentLang];
+    let statusLabel = '';
+    if (data.aqi <= 50) statusLabel = dict['aqi-categories'][0].label.split('(')[0];
+    else if (data.aqi <= 100) statusLabel = dict['aqi-categories'][1].label.split('(')[0];
+    else if (data.aqi <= 200) statusLabel = dict['aqi-categories'][2].label.split('(')[0];
+    else if (data.aqi <= 300) statusLabel = dict['aqi-categories'][3].label.split('(')[0];
+    else if (data.aqi <= 400) statusLabel = dict['aqi-categories'][4].label.split('(')[0];
+    else statusLabel = dict['aqi-categories'][5].label.split('(')[0];
+
+    statusEl.innerText = statusLabel;
+    statusEl.style.backgroundColor = color;
+    mainCard.style.borderTopColor = color;
+
+    updateModeHealthAdvice(data.aqi);
+
+
+    const percent = Math.min((data.aqi / 500) * 100, 100);
+    pointer.style.left = percent + '%';
+
+    if (data.city.geo && data.city.geo[0] && data.city.geo[1]) {
+        map.setView([data.city.geo[0], data.city.geo[1]], 10);
+    }
+
+
+
+    // ✅ Update forecast section
+    updateForecast();
+
+    // ✅ Peak Spike Predictor render (frontend only)
+  if (typeof renderSpikePredictor === "function") {
+    renderSpikePredictor(aqiHistoryValues, currentAQI);
+}
+
+}
+
+        // --- Command Map ---
+      function makeWaqiTile(type, opacity = 0.9){
+  return L.tileLayer(`https://tiles.aqicn.org/tiles/${type}/{z}/{x}/{y}.png?token=${WAQI_TOKEN}`, {
+    opacity,
+    attribution: '© OpenStreetMap | Data: WAQI'
+  });
+}
+
+function triggerCall(aqi, city) {
+  const phone = localStorage.getItem("nayaruvi_phone");
+  if (!phone) return;
+
+  const THRESHOLD = 200;
+  const lastCall = Number(localStorage.getItem("nayaruvi_last_call") || 0);
+
+  if (aqi >= THRESHOLD && lastCall < THRESHOLD) {
+    localStorage.setItem("nayaruvi_last_call", THRESHOLD);
+
+    fetch("http://127.0.0.1:5000/call-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: phone,
+        location: city,
+        aqi: aqi
+      })
+    });
+  }
+
+  if (aqi < THRESHOLD) {
+    localStorage.setItem("nayaruvi_last_call", "0");
+  }
+}
+
+
+// FULL initMap()
+async function initMap(){
+  map = L.map('aqi-map').setView([20.5937, 78.9629], 5);
+
+  baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  // ✅ Different tile layers for different buttons
+  // 1) AQI Value Map = station AQI squares
+  valueTileLayer = makeWaqiTile("usepa-aqi", 1.0);
+
+  // 2) Heat Map View = smooth AQI overlay (lower opacity looks like heat)
+  heatTileLayer = makeWaqiTile("usepa-aqi", 0.55);
+
+  // 3) Pollution Sources = PM2.5 overlay (you can change to pm10/no2/o3 later)
+  pollutantTileLayer = makeWaqiTile("usepa-pm25", 0.85);
+
+  // default view
+  setMapView("value");
+}
+
+// FULL setMapView() (matches your HTML onclick)
+function setMapView(mode){
+  // remove previous overlay
+  if (activeOverlay){
+    map.removeLayer(activeOverlay);
+    activeOverlay = null;
+  }
+
+  // buttons UI toggle
+  const btnValue = document.getElementById("map-btn-value");
+  const btnHeat = document.getElementById("map-btn-heat");
+  const btnSources = document.getElementById("map-btn-sources");
+
+  [btnValue, btnHeat, btnSources].forEach(b=>{
+    if (!b) return;
+    b.classList.remove("btn-primary");
+    b.classList.add("btn-outline");
+  });
+
+  if (mode === "value"){
+    activeOverlay = valueTileLayer;
+    if (btnValue){ btnValue.classList.add("btn-primary"); btnValue.classList.remove("btn-outline"); }
+  }
+  else if (mode === "heat"){
+    activeOverlay = heatTileLayer;
+    if (btnHeat){ btnHeat.classList.add("btn-primary"); btnHeat.classList.remove("btn-outline"); }
+  }
+  else if (mode === "sources"){
+    activeOverlay = pollutantTileLayer;
+    if (btnSources){ btnSources.classList.add("btn-primary"); btnSources.classList.remove("btn-outline"); }
+  }
+
+  if (activeOverlay) activeOverlay.addTo(map);
+}
+        // --- Forecast Chart ---
+        function initChart() {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                labels: [],
+                datasets: [{
+                    label: 'Predicted AQI Trend',
+                    data: [],
+                    borderColor: '#f58220',
+                    backgroundColor: 'rgba(245,130,32,0.08)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 5
+                }]
+                },
+                options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    zoom: {
+                    zoom: {
+                        wheel: { enabled: true },
+                        pinch: { enabled: true },
+                        mode: 'y',
+                        limits: {
+                        y: { min: 0, max: 500 }
+                        }
+                    },
+                    pan: {
+                        enabled: true,
+                        mode: 'y',
+                        limits: {
+                        y: { min: 0, max: 500 }
+                        }
+                    }
+                    }
+                },
+                scales: {
+                    y: {
+                    min: 0,
+                    max: 500,
+                    ticks: {
+                        stepSize: 10
+                    },
+                    title: {
+                        display: true,
+                        text: 'AQI Level'
+                    }
+                    },
+                    x: {
+                    title: {
+                        display: true,
+                        text: 'Prediction Horizon'
+                    }
+                    }
+                }
+                }
+            });
+            }
+
+        function resetChartZoom() {
+            if (forecastChart) {
+                forecastChart.resetZoom();
+            }
+        }
+
+        async function fetchAIPrediction(horizonHours){
+  try{
+    // map hours -> model horizon key
+    const map = { 2:"2h", 4:"3h", 6:"6h", 12:"24h", 24:"24h" }; 
+    // (if you don’t have 3h model, 4 can fallback)
+    const horizonKey = map[horizonHours] || "24h";
+
+    // IMPORTANT: make sure latest AQI is stored in ML server
+    await fetch("http://127.0.0.1:5001/store-aqi", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ aqi: Math.round(currentAQI || 0) })
+    });
+
+    const res = await fetch(`http://127.0.0.1:5001/predict-aqi?horizon=${horizonKey}`);
+    const data = await res.json();
+
+    if(data.success) return Number(data.predicted_aqi);
+    return null;
+  }catch(e){
+    console.warn("ML fetch failed:", e);
+    return null;
+  }
+}
+
+
+function spikeSafetyAdvice(prob, threshold){
+  // threshold = 200 or 300
+  if (prob < 30){
+    return "🟢 Low risk: Outdoor activity is generally safe. Stay hydrated.";
+  }
+  if (prob < 60){
+    return "🟠 Moderate risk: Sensitive groups (children, elderly, asthma patients) should limit outdoor exposure.";
+  }
+  if (prob < 85){
+    return threshold === 200
+      ? "🔴 High risk: Wear N95 mask • Avoid outdoor exercise • Keep windows closed."
+      : "🔴 High risk: Stay indoors as much as possible • Use air purifier if available.";
+  }
+  return "🟣 Severe risk: Stay indoors • Use air purifier • Seek medical help if breathing issues occur.";
+}
+
+
+function buildHourlyMLSeries(anchors){
+  anchors.sort((a,b)=>a.h-b.h);
+
+  // 1) start with interpolation (baseline)
+  const base = buildHourlyFromAnchors(anchors); // 24 values
+
+  // 2) add diurnal shape (looks real, not flat)
+  // amplitude depends on how much AQI changes across the day (stronger forecast => stronger hourly variation)
+  const startVal = anchors.find(a=>a.h===0)?.val ?? base[0];
+  const endVal   = anchors.find(a=>a.h===24)?.val ?? base[23];
+  const spread = Math.abs(endVal - startVal);
+  const amp = Math.max(6, Math.min(28, Math.round(spread * 0.18))); // 6..28
+
+  // peak around afternoon, dip late night (shift depends on current time)
+  const now = new Date();
+  const currentHour = now.getHours();
+  const peakHour = 15; // 3 PM typical higher risk
+  const phaseShift = (peakHour - currentHour + 24) % 24;
+
+  const hourly = base.map((v,i)=>{
+    const x = (2*Math.PI*(i - phaseShift))/24;
+    const wave = Math.sin(x);              // -1..+1
+    const shaped = v + wave * amp;
+    return Math.max(0, Math.round(shaped));
+  });
+
+  return hourly;
+}
+
+async function updateForecast() {
+    const range = document.getElementById("forecast-range")?.value || "24";
+
+    // ✅ Always build the full "weather-style" set
+    // (Even if user selects 2h, we still show the full timeline cards + chart)
+    const hoursList = [2, 4, 6, 12, 24, 168, 720];
+    const labels = ["Now", "2h", "4h", "6h", "12h", "Tomorrow", "1 Week", "1 Month"];
+
+    // Start trend with current AQI
+    let trend = [Math.round(currentAQI || 0)];
+
+    // ----------------------------
+    // 1) Try AI backend prediction (if you have it)
+    //    fetchAIPrediction MUST return number OR null
+    // ----------------------------
+    for (let hr of hoursList) {
+        let pred = null;
+
+        // If your fetchAIPrediction supports "hours", send hr
+        // Example endpoint: /predict-aqi?hours=24
+        if (typeof fetchAIPrediction === "function") {
+            pred = await fetchAIPrediction(hr);
+        }
+
+        // Fallback (frontend intelligent forecast)
+        if (pred === null || pred === undefined || isNaN(pred)) {
+            // simple trend-based fallback (no randomness)
+            const base = trend[trend.length - 1];
+            const delta = Math.max(-20, Math.min(20, Math.round((trend[0] - base) * -0.05)));
+            pred = base + delta;
+        }
+
+        trend.push(Math.round(pred));
+    }
+
+    // ----------------------------
+    // 2) Apply dropdown selection (optional)
+    // If user chooses "2h", show smaller chart window
+    // If user chooses "24h", show up to tomorrow, etc.
+    // ----------------------------
+    const limitMap = {
+        "2": 2,
+        "4": 3,
+        "6": 4,
+        "12": 5,
+        "24": 6,
+        "168": 7,
+        "720": 8
+    };
+    const maxIndex = limitMap[String(range)] || 6; // default Tomorrow
+
+    const chartLabels = labels.slice(0, maxIndex + 1);
+    const chartTrend = trend.slice(0, maxIndex + 1);
+
+    // ----------------------------
+    // 3) Update Chart
+    // ----------------------------
+    forecastChart.data.labels = chartLabels;
+    forecastChart.data.datasets[0].data = chartTrend;
+    forecastChart.update();
+
+    // ----------------------------
+    // 4) Build Forecast Objects for Cards (always full)
+    // ----------------------------
+    const forecast = [
+        { label: "2 Hours", value: trend[1] },
+        { label: "4 Hours", value: trend[2] },
+        { label: "6 Hours", value: trend[3] },
+        { label: "12 Hours", value: trend[4] },
+        { label: "Tomorrow", value: trend[5] },
+        { label: "1 Week", value: trend[6] },
+        { label: "1 Month", value: trend[7] }
+    ];
+
+    // If you used renderForecastCards() earlier, call that.
+    // If your function name is renderForecast(), change below accordingly.
+    if (typeof renderForecastCards === "function") {
+        renderForecastCards(forecast);
+    } else if (typeof renderForecast === "function") {
+        renderForecast(forecast);
+    }
+
+    // ----------------------------
+    // 5) Risk Window Predictor (Next 24h)
+    // Anchors: Now, 2h, 4h, 6h, 12h, 24h
+    // ----------------------------
+   // ----------------------------
+// 5) Risk Window Predictor (API-only, WAQI forecast)
+// WAQI gives DAILY forecast (not hourly). We use ONLY API daily values,
+// and interpolate between "now" and "tomorrow avg" to build 0..24 anchors.
+// ----------------------------
+if (typeof buildHourlyFromAnchors === "function" && typeof renderRiskWindow === "function") {
+
+    const noteEl = document.getElementById("risk-timeline-note");
+
+    // pick pollutant forecast to represent "AQI risk" (pm25 preferred)
+    const pm25Arr = waqiDailyForecast?.pm25 || null;
+
+    // Helper: get tomorrow's avg from WAQI daily forecast
+    const getTomorrowAvg = (arr) => {
+        if (!Array.isArray(arr) || arr.length === 0) return null;
+
+        const today = new Date();
+        const tmr = new Date(today);
+        tmr.setDate(today.getDate() + 1);
+
+        const yyyy = tmr.getFullYear();
+        const mm = String(tmr.getMonth() + 1).padStart(2, "0");
+        const dd = String(tmr.getDate()).padStart(2, "0");
+        const tmrStr = `${yyyy}-${mm}-${dd}`;
+
+        // WAQI objects look like: { day:"YYYY-MM-DD", avg:xx, min:xx, max:xx }
+        const exact = arr.find(x => x.day === tmrStr);
+        if (exact && Number.isFinite(exact.avg)) return Math.round(exact.avg);
+
+        // fallback: first future forecast that has avg
+        const future = arr.find(x => x.day > tmrStr && Number.isFinite(x.avg));
+        if (future) return Math.round(future.avg);
+
+        return null;
+    };
+
+    const tomorrowAvg = getTomorrowAvg(pm25Arr);
+
+    // If API forecast missing, fallback to "flat" hourly = currentAQI (still API-only)
+    if (!Number.isFinite(tomorrowAvg)) {
+        const hourly = new Array(24).fill(Math.round(currentAQI || 0));
+        renderRiskWindow(hourly);
+        if (noteEl) noteEl.innerText = "WAQI hourly forecast not available. Showing risk based on current AQI only (API).";
+    } else {
+        const nowVal = Math.round(currentAQI || 0);
+
+        // Interpolate anchors from now -> tomorrowAvg using ONLY API values
+        const interp = (h) => Math.round(nowVal + (h / 24) * (tomorrowAvg - nowVal));
+
+        const anchors = [
+            { h: 0,  val: nowVal },
+            { h: 2,  val: interp(2) },
+            { h: 4,  val: interp(4) },
+            { h: 6,  val: interp(6) },
+            { h: 12, val: interp(12) },
+            { h: 24, val: tomorrowAvg }
+        ];
+
+      const hourly = buildHourlyMLSeries(anchors);
+renderRiskWindow(hourly);
+
+       const noteEl = document.getElementById("risk-timeline-note");
+if (noteEl) noteEl.innerText = "Prediction generated by ML model using trend + smoothing.";
+
+    }
+}
+
+
+    console.log("✅ Forecast Updated:", { range, trend });
+}
+
+function mean(arr){
+  if (!arr || arr.length === 0) return 0;
+  return arr.reduce((a,b)=>a+b,0)/arr.length;
+}
+
+function stdDev(arr){
+  if (!arr || arr.length < 2) return 0;
+  const m = mean(arr);
+  const v = mean(arr.map(x => (x-m)*(x-m)));
+  return Math.sqrt(v);
+}
+
+function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
+
+// smooth probability curve 0..1
+function sigmoid(x){
+  return 1 / (1 + Math.exp(-x));
+}
+
+
+function computeSpikeProbability(historyValues, currentAQI, threshold, horizonHours){
+  // need at least some history
+  const n = historyValues?.length || 0;
+
+// ✅ FALLBACK: show probability from current AQI (even if no history)
+if (n < 6) {
+  const aqiNow = Number(currentAQI) || 0;
+  const dist = threshold - aqiNow;
+
+  // already crossed / very near
+  if (dist <= 0) return { prob: 95, reason: "Already near/above threshold (live AQI)" };
+
+  // horizon boost
+  const hBoost = (horizonHours === 6 ? 0.85 : horizonHours === 12 ? 1.05 : 1.25);
+
+  // closeness to threshold
+  const close = clamp(1 - (dist / 250), 0, 1);
+
+  // base by current AQI
+  let base = 0;
+  if (aqiNow <= 50) base = 6;
+  else if (aqiNow <= 100) base = 12;
+  else if (aqiNow <= 150) base = 22;
+  else if (aqiNow <= 200) base = 35;
+  else if (aqiNow <= 300) base = 55;
+  else base = 75;
+
+  const prob = clamp(Math.round((base + close * 55) * hBoost), 1, 95);
+  return { prob, reason: "Quick estimate from live AQI (history building)" };
+}
+
+  // use last 24 to 72 points (whatever available)
+  const recent = historyValues.slice(-72);
+
+  // basic trend: compare last 1/3 vs first 1/3
+  const chunk = Math.max(4, Math.floor(recent.length / 3));
+  const first = recent.slice(0, chunk);
+  const last  = recent.slice(-chunk);
+
+  const firstAvg = mean(first);
+  const lastAvg  = mean(last);
+
+  const slope = (lastAvg - firstAvg);      // positive = rising
+  const vol = stdDev(recent);              // volatility
+
+  // estimated growth potential over horizon (heuristic)
+  // more horizon -> more chance, rising trend -> more chance, volatility -> more chance
+  const horizonBoost = (horizonHours === 6 ? 0.9 : horizonHours === 12 ? 1.15 : 1.4);
+
+  // "distance to threshold"
+  const dist = threshold - currentAQI;     // if negative, already crossed
+
+  // Score design:
+  // - if already above -> high probability
+  // - if close + rising -> high probability
+  // - volatility increases probability
+  let score = 0;
+
+  if (dist <= 0){
+    score = 3.2; // almost certain (>= 96%)
+  } else {
+    // normalize pieces
+    const slopeN = clamp(slope / 25, -1.2, 1.2);  // slope per window
+    const volN   = clamp(vol / 30, 0, 1.5);
+
+    // closeness: nearer to threshold => higher
+    const closeN = clamp(1 - (dist / 180), 0, 1); // 0 far, 1 very close
+
+    // combine
+    score =
+      (closeN * 1.8) +
+      (slopeN * 1.3) +
+      (volN * 1.1);
+
+    score *= horizonBoost;
+  }
+
+  const prob = clamp(sigmoid(score) * 100, 0, 99);
+
+  // reason text (for UI)
+  const reason =
+    `Trend ${slope >= 0 ? "rising" : "falling"} (${Math.round(slope)}), volatility ${Math.round(vol)}`;
+
+  return { prob: Math.round(prob), reason };
+}
+
+
+function renderSpikePredictor(historyValues, currentAQI){
+  const horizons = [6, 12, 24];
+
+  // compute results for threshold 200
+  const out200 = horizons.map(h => {
+    const r = computeSpikeProbability(historyValues, currentAQI, 200, h);
+    return { h, pct: r.prob };
+  });
+
+  // LEFT: bars
+  const el200 = document.getElementById("spike-200");
+  if (el200){
+    el200.innerHTML = out200.map(p => `
+      <div class="spike-row">
+        <div class="spike-label">Next ${p.h}h</div>
+        <div class="spike-bar">
+          <div class="spike-fill" style="width:${p.pct}%; background:#d32f2f;"></div>
+        </div>
+        <div class="spike-pct">${p.pct}%</div>
+      </div>
+    `).join("");
+  }
+
+  // RIGHT: precautions list (based on each horizon risk)
+  const precEl = document.getElementById("spike-precautions");
+  if (precEl){
+    precEl.innerHTML = out200.map(p => {
+      const advice = spikeSafetyAdvice(p.pct, 200);
+
+      // risk color dot
+      let dot = "#c8e6c9";
+      let tag = "LOW RISK";
+      if (p.pct >= 30 && p.pct < 60){ dot = "#fff9c4"; tag = "MODERATE"; }
+      else if (p.pct >= 60 && p.pct < 85){ dot = "#ffe0b2"; tag = "HIGH"; }
+      else if (p.pct >= 85){ dot = "#ffcdd2"; tag = "SEVERE"; }
+
+      return `
+        <div class="spike-prec-card">
+          <div class="spike-prec-tag">
+            <span class="spike-dot" style="background:${dot}; border:1px solid rgba(0,0,0,0.15)"></span>
+            Next ${p.h}h • ${tag}
+          </div>
+          <div class="spike-prec-text">${advice}</div>
+        </div>
+      `;
+    }).join("");
+  }
+}
+
+
+        // --- Utilities ---
+        function updateLocation() {
+            const q = document.getElementById('city-search').value;
+            if (q) fetchAQIData(q);
+        }
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const res = await fetch(`${WAQI_BASE}/feed/geo:${pos.coords.latitude};${pos.coords.longitude}/?token=${WAQI_TOKEN}`);
+                    const data = await res.json();
+                    if (data.status === 'ok') updateDashboard(data.data);
+                });
+            }
+        }
+
+        function toggleRegistration() {
+            const overlay = document.getElementById('registration-overlay');
+            overlay.style.display = overlay.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        // --- User Registration & Session Management ---
+        function restoreUserSession() {
+            if (localStorage.getItem("nayaruvi_registered") === "true") {
+                const name = localStorage.getItem("nayaruvi_name");
+                const welcomeEl = document.getElementById("welcome-user");
+                if (welcomeEl) {
+                    welcomeEl.innerText = `Welcome back, ${name}`;
+                }
+                console.log("User session restored from localStorage");
+            }
+        }
+
+        async function handleRegistration(event) {
+            event.preventDefault();
+
+            const name = document.getElementById("inp-name").value;
+            const email = document.getElementById("inp-email").value;
+            const pincode = document.getElementById("inp-pincode").value;
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/send-email", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ name, email, pincode })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Save user data
+                    localStorage.setItem("nayaruvi_registered", "true");
+                    localStorage.setItem("nayaruvi_name", name);
+                    localStorage.setItem("nayaruvi_email", email);
+                    localStorage.setItem("nayaruvi_pincode", pincode);
+                    localStorage.setItem("nayaruvi_autoAqiSent", "false");
+
+                    // Update welcome message
+                    const welcomeEl = document.getElementById("welcome-user");
+                    if (welcomeEl) {
+                        welcomeEl.innerText = `Welcome back, ${name}`;
+                    }
+
+                    alert("✅ Registration successful!\nEmail sent to " + email);
+                    toggleRegistration();
+
+                    // Schedule AQI email after 10 seconds
+                    setTimeout(() => {
+                        sendAQIEmail();
+                        localStorage.setItem("nayaruvi_autoAqiSent", "true");
+                    }, 10000);
+                } else {
+                    alert("Registration failed: " + (result.message || "Unknown error"));
+                }
+            } catch (error) {
+                console.error("Registration error:", error);
+                alert("Registration failed. Please try again later.");
+            }
+        }
+
+        // ---------- Personal Mode ----------
+let userMode = localStorage.getItem("nayaruvi_mode") || "normal";
+
+function setMode(mode){
+  userMode = mode;
+  localStorage.setItem("nayaruvi_mode", mode);
+  applyModeUI();
+
+  showModeToast(mode); // ✅ added
+
+  if (typeof currentAQI !== "undefined" && currentAQI !== null) {
+    updateModeHealthAdvice(currentAQI);
+  }
+}
+
+
+function applyModeUI(){
+  const badge = document.getElementById("mode-badge");
+  const tip = document.getElementById("mode-tip");
+  const tabs = document.querySelectorAll("#mode-tabs .mode-btn");
+
+  tabs.forEach(btn => btn.classList.toggle("active", btn.dataset.mode === userMode));
+
+  if (badge){
+    badge.textContent = userMode.toUpperCase();
+  }
+
+  if (tip){
+    if (userMode === "child"){
+      tip.textContent = "Child Mode: stricter warnings. Prefer indoor activity when AQI is moderate or higher.";
+    } else if (userMode === "asthma"){
+      tip.textContent = "Asthma Mode: very strict. Avoid outdoor exposure earlier. Mask + inhaler readiness advised.";
+    } else {
+      tip.textContent = "Normal Mode: guidance based on general population thresholds.";
+    }
+  }
+}
+
+// Attach click handlers once
+document.addEventListener("DOMContentLoaded", () => {
+  const wrap = document.getElementById("mode-tabs");
+  if (wrap){
+    wrap.addEventListener("click", (e) => {
+      const btn = e.target.closest(".mode-btn");
+      if (!btn) return;
+      setMode(btn.dataset.mode);
+    });
+  }
+  applyModeUI();
+});
+
+
+function updateModeHealthAdvice(aqi){
+  // You likely already have updateHealthAdvice(aqi). We'll override by writing into your existing UI.
+  // Adjust thresholds based on mode
+  const mode = userMode;
+
+  // Mode thresholds (stricter for child/asthma)
+  const T = {
+    normal: { good: 50, moderate: 100, unhealthy: 200, very: 300 },
+    child:  { good: 40, moderate: 80,  unhealthy: 150, very: 250 },
+    asthma: { good: 35, moderate: 70,  unhealthy: 120, very: 200 }
+  }[mode] || { good: 50, moderate: 100, unhealthy: 200, very: 300 };
+
+  let msg = "";
+  let tone = "ok";
+
+  if (aqi <= T.good){
+    msg = "✅ Air looks safe right now. Normal outdoor activity is fine.";
+    tone = "ok";
+  } else if (aqi <= T.moderate){
+    msg = (mode === "normal")
+      ? "⚠ Moderate air. Reduce long outdoor exercise if you feel discomfort."
+      : "⚠ Moderate air (sensitive mode). Prefer indoor activity, especially for long duration.";
+    tone = "mid";
+  } else if (aqi <= T.unhealthy){
+    msg = (mode === "asthma")
+      ? "🔴 Unhealthy for Asthma Mode. Avoid going outside. Keep inhaler ready. Use N95 if needed."
+      : "🔴 Unhealthy air. Avoid outdoor exercise. Wear N95 mask if you must go out.";
+    tone = "high";
+  } else if (aqi <= T.very){
+    msg = "🟣 Very unhealthy. Stay indoors. Close windows. Use air purifier if available.";
+    tone = "vhigh";
+  } else {
+    msg = "🚨 Severe air quality. Avoid outdoor exposure. Seek medical help if breathing issues occur.";
+    tone = "severe";
+  }
+
+  // ✅ Put the message into your existing element
+  // Replace 'health-recommendation-text' with your actual id if different
+  const el = document.getElementById("health-recommendation-text") || document.querySelector(".health-reco-text");
+  if (el) el.innerText = msg;
+
+  // Optional: change the recommendation box style if you have a card id
+  const box = document.getElementById("health-recommendation-box") || document.querySelector(".health-recommendation");
+  if (box){
+    box.dataset.tone = tone;
+  }
+}
+
+
+        function sendAQIEmail() {
+            const email = localStorage.getItem("nayaruvi_email");
+
+            if (!email) {
+                alert("❗ Please register first");
+                return;
+            }
+
+            // ✅ DUMMY AQI DATA (REALISTIC)
+            const payload = {
+                email: email,
+                location: "Dhanalakshmi Srinivasan College of Engineering and Technology",
+                aqi: "92",
+                status: "Satisfactory",
+                advice:
+                    "Air quality is acceptable. Sensitive individuals may experience mild breathing discomfort. " +
+                    "Outdoor activities are generally safe. Mask not mandatory."
+            };
+
+            console.log("📤 Sending dummy AQI:", payload);
+
+            fetch("http://127.0.0.1:5000/send-aqi-status", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("✅ AQI report sent to your email");
+                    } else {
+                        alert("❌ Failed to send AQI email");
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("❌ Server error");
+                });
+        }
+
+        // ✅ Save phone number
+document.getElementById("savePhoneBtn")?.addEventListener("click", () => {
+  const phone = (document.getElementById("phoneInput")?.value || "").trim();
+  if (!/^\d{10}$/.test(phone)) {
+    alert("Enter 10-digit mobile number (example: 8925137065)");
+    return;
+  }
+  localStorage.setItem("nayaruvi_phone", phone);
+  document.getElementById("phoneSavedMsg").innerText = "✅ Number saved for AQI voice alerts";
+});
+
+// ✅ Call trigger when AQI crosses threshold
+function triggerCall(currentAQI, cityName) {
+  const phone = localStorage.getItem("nayaruvi_phone");
+  if (!phone) return;
+
+  const THRESHOLD = 200; // change to 150/300 if you want
+  const lastState = Number(localStorage.getItem("nayaruvi_call_state") || 0);
+
+  // Call only once when crossing upward (prevents spam)
+  if (currentAQI >= THRESHOLD && lastState === 0) {
+    localStorage.setItem("nayaruvi_call_state", "1");
+
+    fetch("http://127.0.0.1:5000/call-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: phone,
+        location: cityName,
+        aqi: String(currentAQI)
+      })
+    })
+    .then(r => r.json())
+    .then(j => console.log("Call response:", j))
+    .catch(err => console.log("Call error:", err));
+  }
+
+  // reset when AQI drops back below threshold
+  if (currentAQI < THRESHOLD) {
+    localStorage.setItem("nayaruvi_call_state", "0");
+  }
+}
+
+    </script>
+    <!-- Mode Toast (popup) -->
+<div id="mode-toast" class="mode-toast" aria-live="polite"></div>
+
+</body>
+
+</html>
